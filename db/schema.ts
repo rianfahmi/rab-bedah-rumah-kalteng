@@ -1,0 +1,5 @@
+import { integer, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core';
+export const imports = sqliteTable('imports', { id: text('id').primaryKey(), kind: text('kind').notNull(), filename: text('filename').notNull(), status: text('status').notNull(), count: integer('count').notNull(), createdAt: text('created_at').notNull(), completedAt: text('completed_at'), summary: text('summary').notNull().default('{}') });
+export const stagedRows = sqliteTable('staged_rows', { importId: text('import_id').notNull(), recordKey: text('record_key').notNull(), payload: text('payload').notNull() }, t => [primaryKey({columns:[t.importId,t.recordKey]})]);
+export const sourceRecords = sqliteTable('source_records', { kind: text('kind').notNull(), recordKey: text('record_key').notNull(), payload: text('payload').notNull(), importId: text('import_id').notNull() }, t => [primaryKey({columns:[t.kind,t.recordKey]})]);
+export const appState = sqliteTable('app_state', {id:integer('id').primaryKey(), version:integer('version').notNull().default(0), owner:text('owner').notNull().default('')});
