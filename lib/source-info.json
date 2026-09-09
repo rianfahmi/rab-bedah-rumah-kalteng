@@ -1,0 +1,16 @@
+{
+  "version": "2026-09-09T04:06:54.533Z",
+  "updatedAt": "2026-09-09T04:06:54.533Z",
+  "files": {
+    "field": "Data_CPB-Semua_CPB-2026-09-08 (1).xlsx",
+    "cpb": "Daftar_CPB_Penetapan_20260909_110309.xlsx",
+    "pb": "Daftar_PB_Penetapan_20260909_110254.xlsx",
+    "legacy": "Proposal_PB_2026-09-09_110232.xlsx"
+  },
+  "cutoffs": {
+    "field": "",
+    "cpb": "2026-09-09T04:06:54.533Z",
+    "pb": "2026-09-09T04:06:54.533Z",
+    "legacy": "2026-09-09T04:06:54.533Z"
+  }
+}
