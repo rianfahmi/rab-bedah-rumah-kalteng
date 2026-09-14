@@ -1,6 +1,6 @@
 # RAB Bedah Rumah Kalteng
 
-Dashboard BNBA dan impor pembaruan dari empat sumber Excel. Situs mempertahankan identitas Sites yang sama dengan versi awal.
+Dashboard BNBA dan impor pembaruan dari lima sumber Excel. Situs mempertahankan identitas Sites yang sama dengan versi awal.
 
 ## Sumber awal
 
@@ -11,7 +11,7 @@ Data awal berasal dari file pengguna tertanggal 8–9 September 2026:
 - Progres_Proposal: 2.355 BNBA dengan status dan kelengkapan RAB terbaru (9 September 2026).
 - Daftar_PB_Penetapan: 2.071 BNBA dengan nomor SK PB; 15 tidak tercantum pada file CPB.
 
-`lib/seed.json` menyimpan hasil normalisasi awal di sisi server. Pembaruan Excel disimpan di D1, lalu digabung di atas sumber awal per jenis sumber, tahun, dan BNBA. Dashboard dan identitas utama mengutamakan Progres Proposal, lalu CPB, verifikasi lapangan, dan PB untuk data pelengkap; penetapan CPB/PB mengikuti keanggotaan sumber resminya. Nomor CPB pada sumber PB tetap ditampilkan sebagai referensi ketika BNBA tidak ada pada daftar CPB. Status, dokumen terisi, dan progres dari Progres Proposal merupakan dasar Dashboard RAB. Penetapan PB tetap mengikuti sumber SK PB.
+`lib/seed.json` menyimpan hasil normalisasi awal di sisi server. Pembaruan Excel disimpan di D1, lalu digabung di atas sumber awal per jenis sumber, tahun, dan BNBA. Dasar daftar kerja RAB adalah BNBA yang hasil BA-HV-nya Direkomendasikan. Fasilitator menyusun RAB sebagai lampiran sebelum PPK menetapkan PB. Penetapan CPB tetap terbaca sebagai data transisi dari alur sebelumnya; PB tanpa CPB tidak dianggap sebagai kesalahan. Sampai BA-HV terbaru diimpor, CPB yang Direkomendasikan dan PB dengan hasil verifikasi lapangan Ya dipakai sebagai data transisi. Status, dokumen terisi, dan progres dari Progres Proposal hanya dipakai untuk membaca progres RAB selama masa transisi. Penetapan PB tetap mengikuti sumber SK PB.
 
 ## Impor
 
@@ -32,12 +32,12 @@ Filter wilayah berjenjang: Kabupaten/Kota → Kecamatan → Desa/Kelurahan. Pili
 
 Build memakai skrip Sites. Akses situs tetap privat. File Excel asli tidak disajikan sebagai aset publik; data awal terstruktur berada pada bundel server. Pengisian dan ekspor dokumen RAB masih merupakan tahap pengembangan berikutnya.
 
-## Pembaruan 9 September
+## Pembaruan 14 September
 
-Dashboard hanya memuat BNBA pada Progres Proposal. Kartu ringkasan adalah filter status yang dapat diaktifkan dan dilepas. Dalam pemeriksaan menggabungkan Menunggu verifikasi dan Menunggu persetujuan. Jumlah kartu tetap mengikuti filter wilayah dan fasilitator, sehingga pemilihan status tidak menghilangkan perbandingan status lain.
+Dashboard memuat BNBA yang layak disusun RAB menurut alur BA-HV → Penyusunan RAB → Penetapan PB. Kartu ringkasan adalah filter status yang dapat diaktifkan dan dilepas. Dalam pemeriksaan menggabungkan Menunggu verifikasi dan Menunggu persetujuan. Jumlah kartu tetap mengikuti filter wilayah dan fasilitator, sehingga pemilihan status tidak menghilangkan perbandingan status lain.
 
 Parser mendukung kedua bentuk ekspor Progres Proposal (No BNBA / Kode BNBA, Status Proposal / Status proposal, Dokumen terisi / Terisi (jenis), Total dokumen / Total jenis). Pratinjau menampilkan parameter, sumber, nilai aktual, ketentuan atau pembanding, dan alasan. Isian tidak valid memblokir penyimpanan. Perbedaan sumber memerlukan pengakuan tinjauan sebelum finalisasi. Validasi kembali dilakukan di server.
 
 Snapshot CPB, PB, dan Progres Proposal diganti dengan file terbaru pengguna. `lib/source-info.json` menyimpan nama sumber, versi dataset, dan batas waktu snapshot. Overlay impor sebelum snapshot terkait tidak mengalahkan pembaruan ini; impor setelahnya tetap berlaku. Riwayat tetap disimpan. Versi dataset mencegah finalisasi pratinjau dari snapshot sebelumnya. Verifikasi lapangan tetap menggunakan sumber 8 September karena tidak ada pengganti baru.
 
-Pemeriksaan awal: 95 temuan pada 95 BNBA, terdiri dari 15 pasangan CPB tidak ditemukan, 17 ketidaksesuaian hasil verifikasi dengan penetapan, dan 63 nomor surat CPB berbeda. Tidak ditemukan format/isian wajib yang tidak valid.
+Pemeriksaan antar-sumber tetap dilakukan saat pratinjau impor untuk format dan identitas wajib. Ketidakhadiran Penetapan CPB, perbedaan referensi CPB pada Penetapan PB, serta status transisi tidak lagi ditampilkan sebagai masalah dashboard karena alurnya berubah.
