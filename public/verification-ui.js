@@ -2,7 +2,10 @@ import {componentGroups,familyOptions,assessVerification} from './verification-r
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function mountFactualForm(r,baseHTML,{loadData,getRecord,detail}){
  const dialog=document.getElementById('document');document.getElementById('doc-content').innerHTML=baseHTML;
- const form=document.getElementById('verification-form'),saved=r.assessment?.criteria||{};
+ let imported={};try{imported=JSON.parse(r.fieldVerificationDetails||'{}')}catch{}
+ const sourceMap={'field-own-kk':'Memiliki KK Sendiri','field-house-area':'Luas Rumah (m²)','field-occupants':'Jumlah Penghuni (Jiwa)','field-occupancy-years':'Lama Menghuni Rumah (Tahun)','field-income':'Penghasilan Kepala Keluarga per Bulan (Rp)','field-ump':'Nilai UMP/UMK (Rp)','field-other-home':'Memiliki Aset Rumah Lainnya','field-prior-help':'Pernah Memperoleh BSPS','field-help-year':'Tahun Dapat BSPS','field-program-agree':'Bersedia Mengikuti Ketentuan BSPS'};
+ const importedCriteria=Object.fromEntries(Object.entries(sourceMap).map(([key,column])=>[key,imported[column]]).filter(([,value])=>value!==undefined&&value!==''));
+ const form=document.getElementById('verification-form'),saved={...importedCriteria,...(r.assessment?.criteria||{})};
  const input=(key,label,type='text')=>`<label>${esc(label)}<input name="${key}" type="${type}" value="${esc(saved[key]??'')}" ${type==='number'?'min="0" step="any"':''}></label>`;
  const select=(key,label,choices)=>`<label>${esc(label)}<select name="${key}"><option value="">Pilih…</option>${choices.map(v=>`<option ${saved[key]===v?'selected':''}>${esc(v)}</option>`).join('')}</select></label>`;
  const groupRadio=(key,label,choices)=>`<fieldset><legend>${esc(label)}</legend>${choices.map(value=>`<label class="radio-choice"><input type="radio" name="${key}" value="${esc(value)}" ${saved[key]===value?'checked':''}>${esc(value)}</label>`).join('')}</fieldset>`;
