@@ -68,6 +68,7 @@ export function syncVerification(imported,saved={},previous={}){
  const criteria={...imported},conflicts=[];
  for(const [key,value] of Object.entries(saved)){
   if(!(key in previous)||value!==previous[key]){
+   if((value===''||value===null||value===undefined)&&!(key in previous)&&key in imported)continue;
    criteria[key]=value;
    if(key in imported&&key in previous&&imported[key]!==previous[key]&&value!==imported[key])conflicts.push(key);
   }
