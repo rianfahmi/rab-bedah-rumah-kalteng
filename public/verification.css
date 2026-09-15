@@ -55,7 +55,7 @@ dialog:has(.official-verification-sheet){width:min(1280px,98vw);max-width:1280px
 .source-change{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:6px;border-radius:50%;background:#e98718;color:#fff;font:800 11px/1 Arial,sans-serif;vertical-align:middle;cursor:help;box-shadow:0 0 0 2px #fff;outline:0}
 .source-change:focus-visible{box-shadow:0 0 0 3px #f7c987}
 .source-change{padding:0;border:0}
-.source-change-tooltip{position:fixed;z-index:30;width:min(320px,calc(100vw - 24px));padding:11px 12px;border:1px solid #d78825;border-radius:8px;background:#fff8eb;color:#5a3810;box-shadow:0 10px 28px #57360f2e;font:12px/1.45 'DM Sans',sans-serif;white-space:pre-line;pointer-events:none}
+.source-change-tooltip{position:fixed;z-index:100;width:min(340px,calc(100vw - 24px));padding:12px 14px;border:1px solid #d78825;border-radius:8px;background:#fff8eb;color:#5a3810;box-shadow:0 10px 28px #57360f2e;font:12px/1.45 'DM Sans',sans-serif;pointer-events:none}.source-change-tooltip>strong{display:block;margin-bottom:8px;color:#8b4a03;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px}.source-change-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px;padding-top:8px;border-top:1px solid #efd6ad}.source-change-row span{color:#7c5b2a}.source-change-row b{color:#35220b;text-align:right}
 .source-change-tooltip[hidden]{display:none}
 .decision-table,.decision-table tbody{display:block;width:calc(100% - 24px)}
 .decision-table{margin:12px;border:0;background:transparent}

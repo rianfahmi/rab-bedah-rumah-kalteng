@@ -1,27 +1,50 @@
-import {openVerificationPrint} from './verification-print.js';import {readFactualFields,updateConditionalFields} from './verification-conditions.js';import {importVerification,sourceChanges,syncVerification} from './verification-import.js';import {componentGroups,familyOptions,assessVerification} from './verification-rules.js';const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));export function mountFactualForm(r,baseHTML,{loadData,detail}){ const dialog=document.getElementById('document');document.getElementById('doc-content').innerHTML=baseHTML; let imported={};try{imported=JSON.parse(r.fieldVerificationDetails||'{}')}catch{} const mapped=importVerification(imported); const stored={...(r.assessment?.criteria||{})};let previous={};try{previous=JSON.parse(stored['import-baseline']||'{}')}catch{}delete stored['import-baseline']; const synced=syncVerification(mapped.criteria,stored,previous); const form=document.getElementById('verification-form'),saved=synced.criteria;
+import {openVerificationPrint} from './verification-print.js';import {readFactualFields,updateConditionalFields} from './verification-conditions.js';import {importVerification,sourceChanges,syncVerification} from './verification-import.js';import {componentGroups,familyOptions,assessVerification} from './verification-rules.js';const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));export function mountFactualForm(r,baseHTML,{loadData,getRecord,detail}){ const dialog=document.getElementById('document');document.getElementById('doc-content').innerHTML=baseHTML; let imported={};try{imported=JSON.parse(r.fieldVerificationDetails||'{}')}catch{} const mapped=importVerification(imported); const stored={...(r.assessment?.criteria||{})};let previous={};try{previous=JSON.parse(stored['import-baseline']||'{}')}catch{}delete stored['import-baseline']; const synced=syncVerification(mapped.criteria,stored,previous); const form=document.getElementById('verification-form'),saved=synced.criteria;
  const sourceTooltip=document.createElement('div');
  sourceTooltip.className='source-change-tooltip';
  sourceTooltip.id='source-change-tooltip';
  sourceTooltip.hidden=true;
  sourceTooltip.setAttribute('role','tooltip');
+ sourceTooltip.setAttribute('aria-live','polite');
  form.appendChild(sourceTooltip);
  let sourceTooltipOwner=null,sourceTooltipPinned=false;
  const hideSourceTooltip=(force=false)=>{
   if(sourceTooltipPinned&&!force)return;
+  if(sourceTooltipOwner)sourceTooltipOwner.setAttribute('aria-expanded','false');
   sourceTooltip.hidden=true;
   sourceTooltipOwner=null;
   sourceTooltipPinned=false;
  };
- const showSourceTooltip=(badge,details,pinned=false)=>{
+ const showSourceTooltip=(badge,comparisons,pinned=false)=>{
   sourceTooltipOwner=badge;
   sourceTooltipPinned=pinned;
-  sourceTooltip.textContent=details;
+  sourceTooltip.replaceChildren();
+  const title=document.createElement('strong');
+  title.textContent='Perbandingan data';
+  sourceTooltip.append(title);
+  comparisons.forEach(({before,after})=>{
+   const row=document.createElement('div');
+   row.className='source-change-row';
+   const initial=document.createElement('span');
+   initial.textContent='Data Awal (sumber: go.pkp.go.id)';
+   const initialValue=document.createElement('b');
+   initialValue.textContent=String(before||'-');
+   const updated=document.createElement('span');
+   updated.textContent='Data Perubahan';
+   const updatedValue=document.createElement('b');
+   updatedValue.textContent=String(after||'-');
+   row.append(initial,initialValue,updated,updatedValue);
+   sourceTooltip.append(row);
+  });
   sourceTooltip.hidden=false;
   badge.setAttribute('aria-expanded','true');
   const rect=badge.getBoundingClientRect();
-  const left=Math.min(Math.max(12,rect.left),window.innerWidth-340);
+  const width=Math.min(340,window.innerWidth-24);
+  sourceTooltip.style.width=width+'px';
+  const left=Math.min(Math.max(12,rect.left),window.innerWidth-width-12);
   sourceTooltip.style.left=left+'px';
-  sourceTooltip.style.top=Math.min(window.innerHeight-12,rect.bottom+10)+'px';
+  const height=sourceTooltip.getBoundingClientRect().height;
+  const below=window.innerHeight-rect.bottom-12;
+  sourceTooltip.style.top=(below>=height?rect.bottom+8:Math.max(12,rect.top-height-8))+'px';
  }; for(const key of Object.keys(previous)){if(!(key in saved))for(const el of Array.from(form.elements).filter(el=>el.name===key)){if(el.type==='radio'||el.type==='checkbox')el.checked=false;else el.value='';}} const baseline=document.createElement('input');baseline.type='hidden';baseline.name='import-baseline';baseline.value=JSON.stringify(mapped.criteria);form.appendChild(baseline); const saveState=document.createElement('input');saveState.type='hidden';saveState.name='field-save-state';saveState.value=saved['field-save-state']||(r.assessment?'Lengkap':'Draf');form.appendChild(saveState); for(const [key,value] of Object.entries(saved)){for(const el of Array.from(form.elements).filter(el=>el.name===key)){if(el.type==='radio'||el.type==='checkbox')el.checked=el.value===value;else el.value=value;}} if(mapped.unmapped.length||synced.conflicts.length){const notice=document.createElement('div');notice.className='notice';notice.textContent='Periksa isian sumber: '+mapped.unmapped.map(v=>v.column+': '+v.value).join('; ')+(synced.conflicts.length?' Koreksi lokal dipertahankan pada '+synced.conflicts.length+' isian yang berbeda dari impor terbaru.':'');form.prepend(notice);} const input=(key,label,type='text')=>`<label>${esc(label)}<input name="${key}" type="${type}" value="${esc(saved[key]??'')}" ${type==='number'?'min="0" step="any"':''}></label>`; const select=(key,label,choices)=>`<label>${esc(label)}<select name="${key}"><option value="">Pilih…</option>${choices.map(v=>`<option ${saved[key]===v?'selected':''}>${esc(v)}</option>`).join('')}</select></label>`; const groupRadio=(key,label,choices)=>`<fieldset><legend>${esc(label)}</legend>${choices.map(value=>`<label class="radio-choice"><input type="radio" name="${key}" value="${esc(value)}" ${saved[key]===value?'checked':''}>${esc(value)}</label>`).join('')}</fieldset>`; form.querySelector('.bnba-line').insertAdjacentHTML('afterend','<div class="factual-result" aria-live="polite" id="factual-result"></div>'); form.querySelector('[name="field-bnba"]').readOnly=true; const note=form.querySelector('.official-note'); note.insertAdjacentHTML('afterend',`<section class="factual-matrix"><h3>KONDISI RUMAH</h3><p>Semua bentuk dan bahan rumah dinilai: tembok, setengah tembok, kayu tapak, dan kayu panggung.</p><div class="matrix-scroll"><table><thead><tr><th rowspan="2">Aspek/komponen</th><th colspan="3">Kondisi rumah</th></tr><tr><th>A</th><th>B</th><th>C</th></tr></thead><tbody>${componentGroups.map(([group,components],i)=>`<tr class="matrix-section"><th colspan="4">${i+1}. ${esc(group)}</th></tr>${components.map(c=>`<tr data-source-keys="condition-${c.key}"><th scope="row">${esc(c.label)}</th>${c.options.map((description,j)=>`<td>${description?`<label class="matrix-choice"><input type="radio" name="condition-${c.key}" value="${'ABC'[j]}" ${saved['condition-'+c.key]==='ABC'[j]?'checked':''} aria-label="${esc(c.label)} — ${'ABC'[j]}"><span>${esc(description)}</span></label>`:'<span aria-label="Tidak ada pilihan B">—</span>'}</td>`).join('')}</tr>`).join('')}`).join('')}</tbody></table></div><p id="area-ratio"></p><small>Deskripsi kecukupan luas B dan C pada lampiran sama-sama kurang dari 7,2 m². Tetapkan nilai berdasarkan pemeriksaan petugas.</small><details><summary>Petunjuk dan kriteria RTLH</summary><p>RTLH bila minimal satu komponen struktur C; non-struktur B atau C; atau kesehatan dan kecukupan luas C. Status lahan dinilai sebagai syarat administrasi.</p><p>Isi sesuai hasil pemeriksaan. Informasi dapat ditambah sesuai kebutuhan. Gunakan formulir ini untuk menilai kualitas rumah dan kebutuhan perbaikan.</p></details></section>`); form.querySelector('.assessment-rule').remove(); note.insertAdjacentHTML('beforebegin',`<section class="factual-admin"><h3>SYARAT ADMINISTRASI PENERIMA BANTUAN</h3><div class="admin-grid">${select('field-wni','Warga negara Indonesia',['Ya','Tidak'])}${select('field-family','Kategori keluarga', [...familyOptions,'Tidak termasuk kategori'])}${select('field-own-kk','Memiliki KK sendiri',['Ya','Tidak'])}${select('field-dispute','Tanah dalam sengketa',['Ya','Tidak'])}${input('field-desil','Desil DTSEN (1–10)','number')}${select('field-occupancy-status','Status penghuni',['Dihuni','Rumah tidak ditinggali/pindah rumah','Meninggal dunia','Pindah domisili'])}${select('field-other-program','Memilih program lain',['Tidak','Ya'])}${input('field-other-reason','Alasan lain tidak direkomendasikan')}</div><p>Desil 1–4 memenuhi syarat, prioritas desil 1–2; atau penghasilan tidak melebihi nilai UMP/UMK tertinggi. Lama menghuni minimal satu tahun, satu-satunya rumah, dan tanah harus memiliki bukti sah.</p></section>`); const resourceTable=(prefix,title,items,valueLabel)=>`<table class="resource-table"><caption>${esc(title)}</caption><thead><tr><th>No.</th><th>Bentuk/sumber</th><th>Ada</th><th>Tidak ada</th><th>${esc(valueLabel)}</th>${prefix.startsWith('material')?'<th>Ceklis foto</th>':''}</tr></thead><tbody>${items.map((label,i)=>`<tr data-source-keys="${prefix}-${i}-available,${prefix}-${i}-value"><td>${i+1}</td><td>${label==='Lainnya'?input(prefix+'-'+i+'-name','Lainnya'):esc(label)}</td><td class="resource-check"><label><input type="radio" name="${prefix}-${i}-available" value="Ada" ${saved[`${prefix}-${i}-available`]==='Ada'?'checked':''} aria-label="${esc(label)} ada"></label></td><td class="resource-check"><label><input type="radio" name="${prefix}-${i}-available" value="Tidak ada" ${saved[`${prefix}-${i}-available`]==='Tidak ada'?'checked':''} aria-label="${esc(label)} tidak ada"></label></td><td>${input(prefix+'-'+i+'-value',valueLabel,prefix==='money'?'number':'text')}</td>${prefix.startsWith('material')?`<td class="resource-check"><label><input type="checkbox" name="${prefix}-${i}-photo" ${saved[`${prefix}-${i}-photo`]==='on'?'checked':''} aria-label="${esc(label)} foto dilampirkan"></label></td>`:''}</tr>`).join('')}</tbody></table>`; form.querySelector('.swadaya-section').innerHTML=`<h3>I. IDENTIFIKASI KESWADAYAAN</h3><p>Keswadayaan disiapkan hingga pada tahap penyusunan proposal.</p><h4>A. Barang/Material</h4><div class="materials-grid">${resourceTable('material-used','a. Material eksisting/bekas layak pakai',['Kayu','Balok kayu','Kusen','Daun pintu','Jendela','Genteng','Batu bata','Lainnya'],'Jika ada, jumlah')}${resourceTable('material-new','b. Material baru/stok',['Kayu','Genteng','Batu bata','Pasir','Kerikil','Lainnya'],'Jika ada, jumlah')}</div>${resourceTable('money','B. Uang',['Tabungan','Hasil jual panen/ternak','Bantuan keluarga/kerabat','Lainnya'],'Jika ada, nilai (Rp)')}${resourceTable('labor','C. Tenaga kerja',['Tenaga sendiri','Dukungan keluarga','Dukungan tetangga/kerabat','Lainnya'],'Jika ada, sebutkan nama')}<small>Ceklis foto merupakan tanda kelengkapan lampiran; bukan unggahan foto.</small>`; const reason=(key,label)=>`<label class="decision-reason"><input type="checkbox" data-decision-reason="${key}" disabled><span>${esc(label)}</span></label>`; form.querySelector('.conclusion-section').innerHTML=`<h3>II. KESIMPULAN</h3><div id="factual-conclusion" aria-live="polite"></div><table class="decision-table"><tbody><tr><th colspan="2"><label class="decision-recommendation"><input type="checkbox" id="decision-recommendation" disabled> Direkomendasikan Bedah Rumah</label></th><th colspan="2">Tidak Direkomendasikan Bedah Rumah, alasan:</th></tr><tr><td>${groupRadio('field-construction','Jenis penanganan',['Konvensional','Ferosemen (untuk rumah tembok tanpa perkuatan)'])}</td><td>${reason('no-kk','Belum memiliki KK sendiri')}${reason('other-home','Memiliki rumah >1')}</td><td>${reason('other-program','Memilih program lain')}${reason('land','Tanah bersengketa/tanpa bukti sah kepemilikan/penguasaan/ilegal')}</td><td>${reason('occupancy-years','Rumah yang ditinggali <1 tahun')}${reason('occupancy-status','Rumah tidak ditinggali/pindah rumah')}</td></tr><tr><td colspan="2">${reason('prior-help','Pernah memperoleh bantuan perumahan bagi MBR dalam 5 tahun terakhir')}</td><td>${reason('deceased','Meninggal dunia')}${reason('moved','Pindah domisili')}${reason('other','Lainnya')}</td><td>${reason('housing','Rumah layak huni/rusak ringan')}${reason('income','Penghasilan > UMP/UMK (di luar desil 1–4)')}</td></tr></tbody></table><label class="verification-notes">Keterangan hasil verifikasi<textarea id="assessment-notes" maxlength="2000">${esc(r.assessment?.notes||'')}</textarea></label><h3>III. Pernyataan</h3><p>Calon Penerima Bantuan (CPB) sanggup mengikuti ketentuan program dan tidak akan mengundurkan diri.</p>`; const identity=form.querySelector('.official-form-grid');identity.id='section-identitas';
  form.querySelector('.factual-admin').id='section-administrasi';
  form.querySelector('.factual-matrix').id='section-kondisi';
@@ -41,7 +64,7 @@ import {openVerificationPrint} from './verification-print.js';import {readFactua
   form.querySelectorAll('[data-source-keys]').forEach(target=>{
    const keys=target.dataset.sourceKeys.split(',').filter(key=>changes[key]);
    if(!keys.length)return;
-   const details=keys.map(key=>'Data Awal (sumber: go.pkp.go.id): '+String(changes[key].before||'-')+'\nData Perubahan: '+String(changes[key].after||'-')).join('\n\n');
+   const comparisons=keys.map(key=>({before:changes[key].before,after:changes[key].after}));
    const badge=document.createElement('button');
    badge.type='button';
    badge.className='source-change';
@@ -50,9 +73,9 @@ import {openVerificationPrint} from './verification-print.js';import {readFactua
    badge.setAttribute('aria-expanded','false');
    badge.title='Klik untuk melihat perbandingan data awal dan data perubahan';
    badge.textContent='i';
-   badge.addEventListener('mouseenter',()=>showSourceTooltip(badge,details));
+   badge.addEventListener('mouseenter',()=>showSourceTooltip(badge,comparisons));
    badge.addEventListener('mouseleave',()=>hideSourceTooltip());
-   badge.addEventListener('focus',()=>showSourceTooltip(badge,details));
+   badge.addEventListener('focus',()=>showSourceTooltip(badge,comparisons));
    badge.addEventListener('blur',()=>hideSourceTooltip(true));
    badge.addEventListener('click',()=>{
     if(sourceTooltipOwner===badge&&sourceTooltipPinned)hideSourceTooltip(true);
@@ -66,4 +89,11 @@ import {openVerificationPrint} from './verification-print.js';import {readFactua
    const refreshedPayload=await refreshedResponse.json();
    if(!refreshedResponse.ok||!refreshedPayload.record)throw Error(refreshedPayload.error||'Draf tersimpan, tetapi data terbaru belum dapat dimuat.');
    Object.assign(r,refreshedPayload.record);
-   if(draft){saveState.value='Draf';message.textContent='Draf tersimpan. Isian akan tetap ada saat formulir dibuka kembali.';buttons.forEach(b=>b.disabled=false)}else{dialog.close();detail(r.id,r.year)}  }catch(error){message.textContent=error.message;buttons.forEach(b=>b.disabled=false)} }; const draftButton=document.createElement('button');draftButton.type='button';draftButton.textContent='Simpan draf';draftButton.onclick=()=>save(true);form.querySelector('.form-actions').appendChild(draftButton); form.onsubmit=e=>{e.preventDefault();save(false)}; dialog.showModal();}
+   const currentRecord=getRecord?.(r.id,r.year);
+   if(currentRecord)Object.assign(currentRecord,refreshedPayload.record);
+   if(draft){
+    saveState.value='Draf';
+    await detail(r.id,r.year);
+    message.textContent='Draf tersimpan di server. Tutup lalu buka kembali untuk melanjutkan isian yang sama.';
+    buttons.forEach(b=>b.disabled=false);
+   }else{dialog.close();detail(r.id,r.year)}  }catch(error){message.textContent=error.message;buttons.forEach(b=>b.disabled=false)} }; const draftButton=document.createElement('button');draftButton.type='button';draftButton.textContent='Simpan draf';draftButton.onclick=()=>save(true);form.querySelector('.form-actions').appendChild(draftButton); form.onsubmit=e=>{e.preventDefault();save(false)}; dialog.showModal();}
