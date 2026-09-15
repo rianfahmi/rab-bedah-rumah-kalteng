@@ -119,3 +119,5 @@ dialog:has(.official-verification-sheet){scrollbar-width:thin;scrollbar-color:#7
 
 .official-verification-sheet .form-title,.official-verification-sheet .form-section-nav{position:static!important;top:auto!important}.official-verification-sheet .form-title{margin:-24px -34px 18px;box-shadow:none}.official-verification-sheet .form-section-nav{margin-top:12px}
 
+
+.official-verification-sheet .admin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.official-verification-sheet .admin-grid select{min-width:0}@media(max-width:700px){.official-verification-sheet .admin-grid{grid-template-columns:1fr}}
