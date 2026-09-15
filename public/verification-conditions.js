@@ -11,12 +11,15 @@ export function conditionalFields(values) {
  return states;
 }
 // Include disabled controls so a temporary choice change never erases entered facts.
+const normalizeNumber=value=>{const text=String(value??'').trim().replace(/[^0-9,.-]/g,'');if(!text)return '';const normalized=text.includes(',')?text.replace(/\./g,'').replace(',','.'):text.replace(/\./g,'');const number=Number(normalized);return Number.isFinite(number)&&number>=0?String(number):''};
 export function readFactualFields(form) {
  const values = {};
  for (const element of form.elements) {
   if (!element.name || ['submit', 'button'].includes(element.type)) continue;
   if (['radio', 'checkbox'].includes(element.type) && !element.checked) continue;
-  values[element.name] = element.value;
+  const raw=element.value;
+  const normalized=element.dataset.numberFormat?normalizeNumber(raw):raw;
+  values[element.name] = normalized;
  }
  return values;
 }
