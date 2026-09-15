@@ -20,4 +20,5 @@ excavation.stage2='';
 assert.ok(calculateRab(filled).errors.some(error=>error.includes('sumber dana/bahan belum sama')));
 const exported=rabExport({id:'62080009',year:'2026',name:'Uji',region:'Kabupaten',district:'Kecamatan',village:'Desa'}, {activity:'Peningkatan kualitas',rows});
 assert.ok(exported.rows.some(row=>row[7]==='II'&&row[8]==='Pekerjaan Pondasi'));
+assert.ok(exported.rows.some(row=>row[7]===''&&row[8]==='Bongkar Rumah Lama'),'Nomor kosong dari lampiran harus tetap kosong.');
 console.log('RAB template checks passed');
