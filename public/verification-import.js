@@ -32,6 +32,9 @@ export function importVerification(details){
   if(index>=0&&c.options[index])criteria['condition-'+c.key]='ABC'[index];
   else unmapped.push({column,value});
  }
+ const desilMatch=clean(details.Keterangan).match(/\bdesil\s*(10|[1-9])\b/i);
+ if(desilMatch)criteria['field-desil']=desilMatch[1];
+ if(Number(criteria['field-occupants'])>0)criteria['field-occupancy-status']='Dihuni';
  const method=clean(details['Metode Konstruksi']);
  if(method==='Konvensional')criteria['field-construction']=method;
  if(method==='Ferosemen')criteria['field-construction']='Ferosemen (untuk rumah tembok tanpa perkuatan)';
