@@ -14,24 +14,15 @@ const verificationDetails=record=>{try{return JSON.parse(record.fieldVerificatio
 const cpbContext=record=>{
  const source=verificationDetails(record);
  const value=(...keys)=>keys.map(key=>source[key]).find(item=>item!==undefined&&item!==null&&String(item).trim()!=='')||'—';
- const facts=[
-  ['Hasil verifikasi',value('Hasil Verifikasi')||record.fieldRecommendation],
-  ['Status verifikasi',value('Status Verifikasi')||record.verificationStatus],
-  ['Rekomendasi BA-HV',record.bahvVerification||'—'],
-  ['Konstruksi',value('Metode Konstruksi')],
-  ['Penguasaan lahan',value('Status Penguasaan Lahan')],
-  ['Luas rumah',value('Luas Rumah (m²)')],
-  ['Jumlah penghuni',value('Jumlah Penghuni (Jiwa)')],
-  ['Penghasilan per bulan',value('Penghasilan Kepala Keluarga per Bulan (Rp)')],
-  ['Nilai UMP/UMK',value('Nilai UMP/UMK (Rp)')],
-  ['Kondisi fondasi',value('Fondasi','Pondasi')],
-  ['Kondisi dinding',value('Dinding')],
-  ['Kondisi lantai',value('Lantai')],
-  ['Kondisi penutup atap',value('Penutup Atap')],
-  ['Akses air minum',value('Akses Air Minum')],
-  ['Akses sanitasi',value('Akses Sanitasi')]
- ];
- return '<section class="cpb-rab-context" aria-label="Rincian CPB"><header><div><div class="cpb-kicker">Rincian Calon Penerima Bantuan</div><h1>'+esc(record.name)+'</h1><p>NIK '+esc(record.nik||'—')+' · No. KK '+esc(record.kk||'—')+' · BNBA '+esc(record.id)+'</p></div><div class="cpb-stage">Tahun '+esc(record.year)+'<small>'+esc(record.phase||'—')+'</small></div></header><div class="cpb-profile"><div><span>Lokasi</span><strong>'+esc(record.address||'—')+'</strong><small>'+esc(record.village||'—')+' · '+esc(record.district||'—')+' · '+esc(record.region||'—')+'</small></div><div><span>Pendamping verifikasi faktual RAB</span><strong>'+esc((record.facilitators||[]).join(', ')||record.fac||'—')+'</strong></div><div><span>Alur saat ini</span><strong>Verifikasi → BA-HV → Penyusunan RAB</strong><small>'+esc(record.bahvVerification||'Menunggu Berita Acara Hasil Verifikasi')+'</small></div></div><section class="cpb-verification"><div class="cpb-section-title"><h2>Hasil Verifikasi Faktual</h2><p>Data sumber verifikasi yang menjadi dasar penyusunan RAB.</p></div><div class="cpb-verification-grid">'+facts.map(([label,item])=>'<div><span>'+esc(label)+'</span><strong>'+esc(item)+'</strong></div>').join('')+'</div></section></section>';
+ const cell=([label,item])=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(item)+'</dd></div>';
+ const section=(title,rows)=>'<section class="cpb-detail-section"><h3>'+esc(title)+'</h3><dl>'+rows.map(cell).join('')+'</dl></section>';
+ const structure=[['Fondasi',value('Fondasi','Pondasi')],['Sloof',value('Sloof')],['Kolom',value('Kolom')],['Ring balok',value('Ring Balok')],['Rangka atap',value('Rangka Atap')]];
+ const nonStructure=[['Dinding',value('Dinding')],['Jenis dinding terluas',value('Jenis Dinding Terluas')],['Lantai',value('Lantai')],['Jenis lantai terluas',value('Jenis Lantai Terluas')],['Penutup atap',value('Penutup Atap')],['Jenis penutup atap terluas',value('Jenis Atap Terluas')]];
+ const health=[['Akses air minum',value('Akses Air Minum')],['Sumber air minum',value('Sumber Air Minum')],['Akses sanitasi',value('Akses Sanitasi')],['Fasilitas sanitasi',value('Fasilitas Sanitasi')],['Pencahayaan',value('Pencahayaan')],['Penghawaan',value('Penghawaan')],['Kecukupan luas ruang',value('Kecukupan Luas Ruang')]];
+ const house=[['Luas rumah',value('Luas Rumah (m²)','Luas Rumah (m�)')],['Jumlah penghuni',value('Jumlah Penghuni (Jiwa)')],['Lama menghuni rumah',value('Lama Menghuni Rumah (Tahun)')]];
+ const eligibility=[['Penghasilan per bulan',value('Penghasilan Kepala Keluarga per Bulan (Rp)')],['Nilai UMP/UMK',value('Nilai UMP/UMK (Rp)')],['Memiliki aset rumah lain',value('Memiliki Aset Rumah Lainnya')],['Pernah menerima bantuan',value('Pernah Memperoleh BSPS')],['Kesediaan mengikuti program',value('Bersedia Mengikuti Ketentuan BSPS')]];
+ const result=[['Tahap verifikasi',value('Status','Status Verifikasi')],['Hasil rekomendasi',value('Hasil Verifikasi')],['Rekomendasi BA-HV',record.bahvVerification||'—'],['Jenis konstruksi',value('Metode Konstruksi')],['Status penguasaan lahan',value('Status Penguasaan Lahan')],['Dokumen bukti hak',value('Jenis Dokumen Kepemilikan Lahan')]];
+ return '<section class="cpb-rab-context" aria-label="Rincian CPB"><header><div><div class="cpb-kicker">Rincian Calon Penerima Bantuan</div><h1>Rincian Calon Penerima Bantuan (CPB)</h1><p>Profil, verifikasi faktual lapangan, dan dasar penyusunan RAB.</p></div><div class="cpb-stage">Tahun '+esc(record.year)+'<small>'+esc(record.phase||'—')+'</small></div></header><div class="cpb-identity"><div><h2>'+esc(record.name)+'</h2><p>NIK '+esc(record.nik||'—')+' · No. KK '+esc(record.kk||'—')+' · BNBA '+esc(record.id)+'</p></div><div><span>Lokasi</span><strong>'+esc(record.address||'—')+'</strong><small>'+esc(record.village||'—')+' · '+esc(record.district||'—')+' · '+esc(record.region||'—')+'</small></div><div><span>Pendamping verifikasi faktual RAB</span><strong>'+esc((record.facilitators||[]).join(', ')||record.fac||'—')+'</strong></div></div><section class="cpb-process"><h2>Alur &amp; Tahapan Pelaksanaan</h2><ol><li><strong>Verifikasi faktual</strong><span>'+esc(value('Status','Status Verifikasi'))+'</span></li><li><strong>Berita Acara Hasil Verifikasi</strong><span>'+esc(record.bahvVerification||'Belum tersedia')+'</span></li><li><strong>Penetapan CPB</strong><span>'+esc(record.letters?.cpb||'Belum tersedia')+'</span></li><li><strong>RAB</strong><span>'+esc(record.status||'Belum ada progres RAB')+'</span></li></ol></section><section class="cpb-verification"><div class="cpb-section-title"><h2>Hasil Verifikasi Faktual</h2><p>Rincian sumber yang menjadi dasar penyusunan RAB.</p></div><div class="cpb-details-grid">'+section('Struktur bangunan',structure)+section('Non-struktur',nonStructure)+section('Kesehatan & kecukupan luas',health)+section('Hasil verifikasi faktual',result)+section('Data rumah & penghunian',house)+section('Data kelayakan',eligibility)+'</div></section></section>';
 };
 
 export async function openRab(record){

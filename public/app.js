@@ -1,4 +1,4 @@
-import {openRab} from './rab-ui.js?v=20260915-cpb-foundation';
+import {openRab} from './rab-ui.js?v=20260915-cpb-layout';
 
 import {currentVerification} from './verification-import.js';
 import {componentGroups} from './verification-rules.js';
