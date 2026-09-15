@@ -7,7 +7,7 @@ import {openVerificationPrint} from './verification-print.js';import {readFactua
  form.querySelectorAll('[data-form-section]').forEach(button=>{button.onclick=()=>document.getElementById(button.dataset.formSection)?.scrollIntoView({behavior:'smooth',block:'start'})});
  for(const key of Object.keys(mapped.criteria)){
   const field=[...form.elements].find(element=>element.name===key);
-  if(!field)continue;
+  if(!field||field.closest('[data-source-keys]'))continue;
   const target=field.closest('.form-field,.official-choice,fieldset')||field.closest('label');
   if(target&&!target.dataset.sourceKeys)target.dataset.sourceKeys=key;
  }
