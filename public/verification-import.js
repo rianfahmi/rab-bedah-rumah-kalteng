@@ -72,6 +72,18 @@ export function syncVerification(imported,saved={},previous={}){
  return {criteria,conflicts};
 }
 
+// Only imported keys represent a source value. Form-only fields are not marked
+// as changes, so the comparison remains meaningful to a verifier.
+export function sourceChanges(baseline={},current={}){
+ const changes={};
+ for(const [key,before] of Object.entries(baseline)){
+  if(key==='import-baseline'||key==='field-save-state')continue;
+  const after=current[key]??'';
+  if(String(before??'')!==String(after??''))changes[key]={before:String(before??''),after:String(after??'')};
+ }
+ return changes;
+}
+
 export function currentVerification(record){
  let details={},previous={};
  try{details=JSON.parse(record.fieldVerificationDetails||'{}')}catch{}

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {importVerification,syncVerification} from '../public/verification-import.js';
+import {importVerification,sourceChanges,syncVerification} from '../public/verification-import.js';
 import {normalize,consolidateRecords,replacementPreview,mergeSources} from '../public/import-model.js';
 const source={'Pondasi':'Ada, sebagian rapuh, tidak kokoh','Kolom':'Tidak ada, seluruhnya rapuh','Dinding':'Tembok kondisi sebagian besar retak, papan atau bahan lain yang kurang kokoh dan tidak kedap air','Luas Rumah (m�)':'36','Hasil Verifikasi':'Direkomendasikan','Status':'Selesai Verifikasi','Kecukupan Luas Ruang':'2'};
 const mapped=importVerification(source);
@@ -21,6 +21,7 @@ assert.deepEqual(importVerification({...source,Status:'Proses Verifikasi','Hasil
 assert.deepEqual(syncVerification({a:'B'},{a:'A'},{a:'A'}),{criteria:{a:'B'},conflicts:[]});
 assert.deepEqual(syncVerification({a:'C'},{a:'B'},{a:'A'}),{criteria:{a:'B'},conflicts:['a']});
 assert.deepEqual(syncVerification({},{a:'A'},{a:'A'}),{criteria:{},conflicts:[]});
+assert.deepEqual(sourceChanges({a:'B',b:'2'},{a:'C',b:'2',c:'baru'}),{a:{before:'B',after:'C'}});
 const base={...normalize('bahv',{}),id:'62010003',year:'2026',name:'Contoh',nik:'1234567890123456',region:'Wilayah',district:'Kecamatan',village:'Desa',verification:'Direkomendasikan',ba:'BA 1'};
 const consolidated=consolidateRecords('bahv',[base,{...base,ba:'BA 2'}]);
 assert.equal(consolidated.records.length,1);assert.equal(consolidated.records[0].ba,'BA 1 ; BA 2');assert.equal(consolidated.conflicts.length,0);
