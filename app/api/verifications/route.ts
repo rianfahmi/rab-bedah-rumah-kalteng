@@ -14,7 +14,12 @@ export async function POST(request:Request){
     if(!body.criteria||typeof body.criteria!=='object'||Array.isArray(body.criteria)||Object.keys(body.criteria).length>250||Object.entries(body.criteria).some(([k,v])=>typeof v!=='string'||v.length>(k==='import-baseline'?15000:2000)))throw new Error('Isian formulir tidak valid.');
     if(body.draft!==undefined&&typeof body.draft!=='boolean')throw new Error('Mode simpan tidak valid.');
     const sources=await getSources();
-    if(!Object.values(sources).some((rows:any)=>rows.some((r:any)=>r.id===body.id&&r.year===body.year)))throw new Error('BNBA tidak ditemukan.');
+    const exists=Object.values(sources).some(rows=>rows.some(row=>{
+      if(!row||typeof row!=='object')return false;
+      const record=row as {id?:unknown,year?:unknown};
+      return record.id===body.id&&record.year===body.year;
+    }));
+    if(!exists)throw new Error('BNBA tidak ditemukan.');
     body.criteria['field-save-state']=body.draft?'Draf':'Lengkap';
     const result=assessVerification(body.criteria,body.year);
     if(!body.draft&&!result.complete)throw new Error('Lengkapi: '+result.missing.join(', '));

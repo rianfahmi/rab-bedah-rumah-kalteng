@@ -20,8 +20,18 @@ export async function POST(request:Request){
   if(!['Peningkatan kualitas','Renovasi','Perbaikan'].includes(d.activity))return json({error:'Pilih jenis kegiatan.'},400);
   const fields=['place','date','group','chair','facilitator','coordinator','notes'];
   if(fields.some(k=>typeof d[k]!=='string'||d[k].length>3000))return json({error:'Isian administrasi tidak valid.'},400);
-  for(const row of d.rows){if(!row||['description','unit'].some(k=>typeof row[k]!=='string'||row[k].length>500)||['volume','price','stage1','stage2','cash','reused'].some(k=>typeof row[k]!=='string'||row[k].length>30||(row[k]!==''&&(!Number.isFinite(Number(row[k]))||Number(row[k])<0))))return json({error:'Baris biaya tidak valid.'},400);}
-  const sources=await getSources();if(!Object.values(sources).some((rows:any)=>rows.some((r:any)=>r.id===body.id&&r.year===body.year)))return json({error:'BNBA tidak ditemukan.'},400);
+  for(const row of d.rows){
+   if(!row||typeof row.description!=='string'||row.description.length>500)return json({error:'Baris biaya tidak valid.'},400);
+   if(row.section===true)continue;
+   if(typeof row.unit!=='string'||row.unit.length>500||['volume','price','stage1','stage2','cash','reused'].some(k=>typeof row[k]!=='string'||row[k].length>30||(row[k]!==''&&(!Number.isFinite(Number(row[k]))||Number(row[k])<0))))return json({error:'Baris biaya tidak valid.'},400);
+  }
+  const sources=await getSources();
+  const exists=Object.values(sources).some(rows=>rows.some(row=>{
+   if(!row||typeof row!=='object')return false;
+   const record=row as {id?:unknown,year?:unknown};
+   return record.id===body.id&&record.year===body.year;
+  }));
+  if(!exists)return json({error:'BNBA tidak ditemukan.'},400);
   const document=Object.fromEntries(['activity','rows',...fields].map(k=>[k,d[k]]));
   const assessment=calculateRab(d.rows),updatedAt=new Date().toISOString();
   await db().prepare('INSERT INTO rab_documents(record_key,payload,updated_at) VALUES(?,?,?) ON CONFLICT(record_key) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').bind(`${body.year}:${body.id}`,JSON.stringify(document),updatedAt).run();

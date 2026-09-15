@@ -3,11 +3,14 @@ export function calculateRab(rows){
  const errors=[],totals={cost:0,stage1:0,stage2:0,cash:0,reused:0};
  if(!rows.length)errors.push('Tambahkan minimal satu baris pekerjaan.');
  const items=rows.map((row,i)=>{
+  if(row.section===true)return {...row,cost:0,allocated:0};
   const values={};
   for(const key of ['volume','price',...fundingKeys]){
    const v=row[key];values[key]=v===''||v===null||v===undefined?null:Number(v);
    if(values[key]!==null&&(!Number.isFinite(values[key])||values[key]<0))errors.push(`Baris ${i+1}: ${key} harus angka tidak negatif.`);
   }
+  const isUnusedTemplate=row.template===true&&Object.values(values).every(v=>v===null);
+  if(isUnusedTemplate)return {...row,...values,cost:0,allocated:0};
   if(!String(row.description||'').trim())errors.push(`Baris ${i+1}: uraian pekerjaan wajib diisi.`);
   if(!String(row.unit||'').trim())errors.push(`Baris ${i+1}: satuan wajib diisi.`);
   if(values.volume===null||values.price===null)errors.push(`Baris ${i+1}: volume dan harga satuan wajib diisi.`);

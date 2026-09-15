@@ -1,25 +1,92 @@
 import {rabExport} from './rab-export.js';
 import {downloadWorkbook} from './excel-export.js';
 import {calculateRab} from './rab-model.js';
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=v=>v===null?'—':Number(v).toLocaleString('id-ID',{maximumFractionDigits:2});
-const columns=[['description','Uraian pekerjaan'],['unit','Satuan'],['volume','Volume'],['price','Harga satuan'],['stage1','Tahap I'],['stage2','Tahap II'],['cash','Swadaya uang'],['reused','Bahan lama']];
-const blank=()=>Object.fromEntries(columns.map(([k])=>[k,'']));
+import {createRabTemplate} from './rab-template.js';
+
+const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const money=value=>value===null?'—':Number(value).toLocaleString('id-ID',{maximumFractionDigits:2});
+const columns=[
+ ['description','Uraian pekerjaan'],['unit','Satuan'],['volume','Volume'],['price','Harga satuan'],
+ ['stage1','Tahap I'],['stage2','Tahap II'],['cash','Swadaya uang'],['reused','Bahan lama']
+];
+const blank=()=>Object.fromEntries(columns.map(([key])=>[key,'']));
+
 export async function openRab(record){
  const dialog=document.getElementById('document'),root=document.getElementById('doc-content');
- dialog.classList.add('rab-dialog');dialog.addEventListener('close',()=>{dialog.classList.remove('rab-dialog');dialog.oncancel=null;},{once:true});
- root.innerHTML='<div class="modal-body">Memuat isian RAB…</div>';dialog.showModal();
- let response;try{const r=await fetch(`/api/rab?id=${record.id}&year=${record.year}`);response=await r.json();if(!r.ok)throw Error(response.error);}catch(e){root.innerHTML=`<div class="modal-body">${esc(e.message)}<button id="rab-close">Tutup</button></div>`;root.querySelector('button').onclick=()=>dialog.close();return;}
- let doc=response.document||{activity:'Peningkatan kualitas',place:'',date:'',group:'',chair:'',facilitator:record.fac||'',coordinator:'',notes:'',rows:[blank()]};
+ dialog.classList.add('rab-dialog');
+ dialog.addEventListener('close',()=>{dialog.classList.remove('rab-dialog');dialog.oncancel=null;},{once:true});
+ root.innerHTML='<div class="modal-body">Memuat isian RAB…</div>';
+ dialog.showModal();
+
+ let response;
+ try{
+  const result=await fetch(`/api/rab?id=${record.id}&year=${record.year}`);
+  response=await result.json();
+  if(!result.ok)throw Error(response.error);
+ }catch(error){
+  root.innerHTML=`<div class="modal-body">${esc(error.message)}<button id="rab-close">Tutup</button></div>`;
+  root.querySelector('button').onclick=()=>dialog.close();
+  return;
+ }
+
+ let doc=response.document||{
+  activity:'Peningkatan kualitas',place:'',date:'',group:'',chair:'',facilitator:record.fac||'',coordinator:'',notes:'',
+  rows:createRabTemplate()
+ };
  const input=(key,label,type='text')=>`<label>${label}<input name="${key}" type="${type}" value="${esc(doc[key])}"></label>`;
- root.innerHTML=`<div class="modal-head"><h2>Rencana Anggaran Biaya Bedah Rumah</h2><button id="rab-close">Tutup</button></div><form id="rab-form"><div class="modal-body"><div class="notice">${esc(record.name)} · BNBA ${esc(record.id)} · Tahun ${record.year}<br>${esc(record.address)} · ${esc(record.village)} · ${esc(record.region)}</div><div class="admin-grid"><label>Jenis kegiatan<select name="activity">${['Peningkatan kualitas','Renovasi','Perbaikan'].map(v=>`<option ${v===doc.activity?'selected':''}>${v}</option>`).join('')}</select></label>${input('group','Kelompok CPB')}${input('place','Tempat')}${input('date','Tanggal','date')}${input('chair','Ketua kelompok')}${input('facilitator','Tenaga Pendamping Masyarakat')}${input('coordinator','Koordinator Kabupaten/Kota')}</div><h3>A. Rincian biaya</h3><p>Harga satuan mencakup pajak dan pengiriman, berdasarkan survei harga. Sesuaikan uraian pekerjaan dengan kebutuhan rumah.</p><div class="table-scroll"><table id="rab-costs"><thead><tr><th>No.</th>${columns.map(([,v])=>`<th>${v}</th>`).join('')}<th>Total harga</th><th></th></tr></thead><tbody></tbody></table></div><button type="button" id="rab-add">Tambah pekerjaan</button><div id="rab-summary" aria-live="polite"></div><label>Catatan<textarea name="notes" maxlength="3000">${esc(doc.notes)}</textarea></label><div id="rab-message" role="status"></div></div><div class="modal-foot"><button type="button" id="rab-export">Export rincian Excel</button><button type="submit" class="primary">Simpan draf RAB</button></div></form>`;
- const form=root.querySelector('form'),body=root.querySelector('tbody');let dirty=false;
- function readRows(){return [...body.rows].map(tr=>Object.fromEntries([...tr.querySelectorAll('input')].map(el=>[el.dataset.key,el.value])));}
- function update(){doc.rows=readRows();const a=calculateRab(doc.rows);[...body.rows].forEach((tr,i)=>tr.querySelector('[data-total]').textContent=money(a.items[i].cost));root.querySelector('#rab-summary').innerHTML=`<p><b>Total RAB: Rp${money(a.totals.cost)}</b> · Tahap I Rp${money(a.totals.stage1)} · Tahap II Rp${money(a.totals.stage2)} · Swadaya uang Rp${money(a.totals.cash)} · Bahan lama Rp${money(a.totals.reused)}</p>${a.errors.length?`<details><summary>${a.errors.length} isian perlu dilengkapi</summary><ul>${a.errors.map(v=>`<li>${esc(v)}</li>`).join('')}</ul></details>`:'<p>Rincian biaya dan sumber dana seimbang.</p>'}`;}
- function renderRows(){body.innerHTML=doc.rows.map((r,i)=>`<tr><td>${i+1}</td>${columns.map(([k,label])=>`<td><input aria-label="${label} baris ${i+1}" data-key="${k}" value="${esc(r[k])}" type="${['description','unit'].includes(k)?'text':'number'}" ${['description','unit'].includes(k)?'':'min="0" step="any"'} style="min-width:${k==='description'?200:90}px;width:100%"></td>`).join('')}<td data-total></td><td><button type="button" data-remove="${i}" aria-label="Hapus baris ${i+1}">×</button></td></tr>`).join('');body.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{doc.rows=readRows();doc.rows.splice(Number(b.dataset.remove),1);dirty=true;renderRows();});update();}
- root.querySelector('#rab-export').onclick=()=>{const current={...Object.fromEntries(new FormData(form)),rows:readRows()},result=rabExport(record,current);downloadWorkbook(result.headers,result.rows,`RAB_${record.year}_${record.id}.xlsx`,'Rincian RAB');};
- renderRows();form.oninput=()=>{dirty=true;update();};root.querySelector('#rab-add').onclick=()=>{doc.rows=readRows();doc.rows.push(blank());dirty=true;renderRows();};
+ root.innerHTML=`<div class="modal-head"><h2>Rencana Anggaran Biaya Bedah Rumah</h2><button id="rab-close">Tutup</button></div><form id="rab-form"><div class="modal-body"><div class="notice">${esc(record.name)} · BNBA ${esc(record.id)} · Tahun ${record.year}<br>${esc(record.address)} · ${esc(record.village)} · ${esc(record.region)}</div><div class="admin-grid"><label>Jenis kegiatan<select name="activity">${['Peningkatan kualitas','Renovasi','Perbaikan'].map(value=>`<option ${value===doc.activity?'selected':''}>${value}</option>`).join('')}</select></label>${input('group','Kelompok CPB')}${input('place','Tempat')}${input('date','Tanggal','date')}${input('chair','Ketua kelompok')}${input('facilitator','Tenaga Pendamping Masyarakat')}${input('coordinator','Koordinator Kabupaten/Kota')}</div><h3>A. Rincian biaya</h3><p>Format ini mengikuti Lampiran 26/KPTS/Dt/2026. Isi hanya pekerjaan, volume, harga satuan, dan sumber dana yang diperlukan untuk rumah tersebut. Harga satuan mencakup pajak dan pengiriman berdasarkan survei harga.</p><div class="table-scroll"><table id="rab-costs"><thead><tr><th>No.</th>${columns.map(([,label])=>`<th>${label}</th>`).join('')}<th>Total harga</th><th></th></tr></thead><tbody></tbody></table></div><button type="button" id="rab-add">Tambah pekerjaan</button><div id="rab-summary" aria-live="polite"></div><label>Catatan<textarea name="notes" maxlength="3000">${esc(doc.notes)}</textarea></label><div id="rab-message" role="status"></div></div><div class="modal-foot"><button type="button" id="rab-export">Export rincian Excel</button><button type="submit" class="primary">Simpan draf RAB</button></div></form>`;
+
+ const form=root.querySelector('form'),body=root.querySelector('tbody');
+ let dirty=false;
+ function readRows(){
+  return [...body.rows].map((tr,index)=>{
+   const previous=doc.rows[index]||{};
+   if(tr.dataset.section==='true')return {...previous,section:true};
+   return {...previous,...Object.fromEntries([...tr.querySelectorAll('input')].map(element=>[element.dataset.key,element.value]))};
+  });
+ }
+ function update(){
+  doc.rows=readRows();
+  const assessment=calculateRab(doc.rows);
+  [...body.rows].forEach((tr,index)=>{
+   const total=tr.querySelector('[data-total]');
+   if(total)total.textContent=money(assessment.items[index].cost);
+  });
+  root.querySelector('#rab-summary').innerHTML=`<p><b>Total RAB: Rp${money(assessment.totals.cost)}</b> · Tahap I Rp${money(assessment.totals.stage1)} · Tahap II Rp${money(assessment.totals.stage2)} · Swadaya uang Rp${money(assessment.totals.cash)} · Bahan lama Rp${money(assessment.totals.reused)}</p>${assessment.errors.length?`<details><summary>${assessment.errors.length} isian perlu dilengkapi</summary><ul>${assessment.errors.map(value=>`<li>${esc(value)}</li>`).join('')}</ul></details>`:'<p>Rincian biaya dan sumber dana seimbang.</p>'}`;
+ }
+ function renderRows(){
+  body.innerHTML=doc.rows.map((row,index)=>{
+   if(row.section===true)return `<tr class="rab-section" data-section="true"><td>${esc(row.no)}</td><td colspan="${columns.length+2}"><b>${esc(row.description)}</b></td></tr>`;
+   return `<tr><td>${esc(row.no||index+1)}</td>${columns.map(([key,label])=>`<td><input aria-label="${label} baris ${index+1}" data-key="${key}" value="${esc(row[key])}" type="${['description','unit'].includes(key)?'text':'number'}" ${['description','unit'].includes(key)?'':'min="0" step="any"'} style="min-width:${key==='description'?200:90}px;width:100%"></td>`).join('')}<td data-total></td><td><button type="button" data-remove="${index}" aria-label="Hapus baris ${index+1}">×</button></td></tr>`;
+  }).join('');
+  body.querySelectorAll('[data-remove]').forEach(button=>button.onclick=()=>{
+   doc.rows=readRows();doc.rows.splice(Number(button.dataset.remove),1);dirty=true;renderRows();
+  });
+  update();
+ }
+
+ root.querySelector('#rab-export').onclick=()=>{
+  const current={...Object.fromEntries(new FormData(form)),rows:readRows()};
+  const exported=rabExport(record,current);
+  downloadWorkbook(exported.headers,exported.rows,`RAB_${record.year}_${record.id}.xlsx`,'Rincian RAB');
+ };
+ renderRows();
+ form.oninput=()=>{dirty=true;update();};
+ root.querySelector('#rab-add').onclick=()=>{doc.rows=readRows();doc.rows.push(blank());dirty=true;renderRows();};
  root.querySelector('#rab-close').onclick=()=>{if(!dirty||confirm('Tutup tanpa menyimpan perubahan RAB?'))dialog.close();};
- dialog.oncancel=e=>{if(dirty&&!confirm('Tutup tanpa menyimpan perubahan RAB?'))e.preventDefault();};
- form.onsubmit=async e=>{e.preventDefault();const fields=Object.fromEntries(new FormData(form));doc={...fields,rows:readRows()};const button=form.querySelector('[type=submit]'),message=root.querySelector('#rab-message');button.disabled=true;message.textContent='Menyimpan…';try{const r=await fetch('/api/rab',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:record.id,year:record.year,document:doc})});const result=await r.json();if(!r.ok)throw Error(result.error);dirty=false;message.textContent='Draf RAB tersimpan. '+(result.assessment.complete?'Rincian biaya seimbang.':'Lengkapi catatan pemeriksaan sebelum finalisasi.');}catch(e){message.textContent=e.message;}finally{button.disabled=false;}};
+ dialog.oncancel=event=>{if(dirty&&!confirm('Tutup tanpa menyimpan perubahan RAB?'))event.preventDefault();};
+ form.onsubmit=async event=>{
+  event.preventDefault();
+  const fields=Object.fromEntries(new FormData(form));
+  doc={...fields,rows:readRows()};
+  const button=form.querySelector('[type=submit]'),message=root.querySelector('#rab-message');
+  button.disabled=true;message.textContent='Menyimpan…';
+  try{
+   const result=await fetch('/api/rab',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:record.id,year:record.year,document:doc})});
+   const saved=await result.json();
+   if(!result.ok)throw Error(saved.error);
+   dirty=false;
+   message.textContent='Draf RAB tersimpan. '+(saved.assessment.complete?'Rincian biaya seimbang.':'Lengkapi catatan pemeriksaan sebelum finalisasi.');
+  }catch(error){message.textContent=error.message;}finally{button.disabled=false;}
+ };
 }
