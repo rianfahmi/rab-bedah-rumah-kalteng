@@ -1,21 +1,26 @@
-import {db,json} from '../../../lib/data';
+import {db,json,getSources} from '../../../lib/data';
 import {assessVerification} from '../../../public/verification-rules.js';
 
-const allowedHousing=new Set(['Layak Huni','Rumah Tidak Layak Huni']);
-const allowedRecommendation=new Set(['Direkomendasikan','Tidak Direkomendasikan']);
+
 
 export async function POST(request:Request){
-  if(request.headers.get('origin')!==new URL(request.url).origin)return json({error:'Asal permintaan tidak sesuai.'},403);
+  const origin=request.headers.get('origin');
+  const host=request.headers.get('x-forwarded-host')||request.headers.get('host')||new URL(request.url).host;
+  if(!origin||new URL(origin).host!==host)return json({error:'Asal permintaan tidak sesuai.'},403);
   if(!request.headers.get('content-type')?.includes('application/json'))return json({error:'Format permintaan tidak sesuai.'},415);
   try{
     const body=await request.json();
     if(typeof body.id!=='string'||!/^\d{6,20}$/.test(body.id)||typeof body.year!=='string'||!/^20\d{2}$/.test(body.year))throw new Error('Nomor BNBA dan tahun tidak valid.');
-    if(!body.criteria||typeof body.criteria!=='object'||Array.isArray(body.criteria)||Object.keys(body.criteria).length>250||Object.values(body.criteria).some(v=>typeof v!=='string'||v.length>2000))throw new Error('Isian formulir tidak valid.');
+    if(!body.criteria||typeof body.criteria!=='object'||Array.isArray(body.criteria)||Object.keys(body.criteria).length>250||Object.entries(body.criteria).some(([k,v])=>typeof v!=='string'||v.length>(k==='import-baseline'?15000:2000)))throw new Error('Isian formulir tidak valid.');
+    if(body.draft!==undefined&&typeof body.draft!=='boolean')throw new Error('Mode simpan tidak valid.');
+    const sources=await getSources();
+    if(!Object.values(sources).some((rows:any)=>rows.some((r:any)=>r.id===body.id&&r.year===body.year)))throw new Error('BNBA tidak ditemukan.');
+    body.criteria['field-save-state']=body.draft?'Draf':'Lengkap';
     const result=assessVerification(body.criteria,body.year);
-    if(!result.complete)throw new Error('Lengkapi: '+result.missing.join(', '));
+    if(!body.draft&&!result.complete)throw new Error('Lengkapi: '+result.missing.join(', '));
     body.housingStatus=result.housingStatus;
-    body.recommendation=result.recommendation;
-    if(result.recommendation==='Direkomendasikan'&&!['Konvensional','Ferosemen (untuk rumah tembok tanpa perkuatan)'].includes(body.criteria['field-construction']))throw new Error('Pilih jenis penanganan.');
+    body.recommendation=body.draft?'Draf':result.recommendation;
+    if(!body.draft&&result.recommendation==='Direkomendasikan'&&!['Konvensional','Ferosemen (untuk rumah tembok tanpa perkuatan)'].includes(body.criteria['field-construction']))throw new Error('Pilih jenis penanganan.');
     if(typeof body.notes!=='string'||body.notes.length>2000)throw new Error('Catatan tidak valid.');
     const key=`${body.year}:${body.id}`;
     const updatedAt=new Date().toISOString();

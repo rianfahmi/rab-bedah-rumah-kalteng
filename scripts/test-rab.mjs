@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {calculateRab} from '../public/rab-model.js';
+import {rabExport} from '../public/rab-export.js';
+import {workbookBlob} from '../public/excel-export.js';
+const row={description:'=SUM(A1)',unit:'m2',volume:'2.5',price:'100000',stage1:'100000',stage2:'100000',cash:'50000',reused:'0'};
+assert.equal(calculateRab([row]).complete,true);
+assert.equal(calculateRab([row]).totals.cost,250000);
+assert.equal(calculateRab([{...row,stage1:'0'}]).complete,false);
+assert.equal(calculateRab([{...row,volume:''}]).items[0].cost,null);
+assert.equal(calculateRab([{...row,price:'-1'}]).complete,false);
+assert.equal(calculateRab([]).complete,false);
+const result=rabExport({id:'00123456',year:'2026',name:'Uji'}, {activity:'Perbaikan',rows:[row]});
+assert.equal(result.rows[0][0],'00123456');assert.equal(result.rows[0][12],250000);assert.equal(result.rows[0][17],0);
+const xml=await workbookBlob(result.headers,result.rows,'RAB').text();
+assert.ok(xml.includes('<v>250000</v>'));assert.ok(xml.includes('00123456'));assert.ok(xml.includes('=SUM(A1)'));assert.ok(!xml.includes('<f>'));
+console.log('RAB arithmetic, incomplete input, funding reconciliation, numeric Excel and text safety passed.');

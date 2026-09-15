@@ -1,11 +1,20 @@
+import {openVerificationPrint} from './verification-print.js';
+import {readFactualFields,updateConditionalFields} from './verification-conditions.js';
+import {importVerification,syncVerification} from './verification-import.js';
 import {componentGroups,familyOptions,assessVerification} from './verification-rules.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function mountFactualForm(r,baseHTML,{loadData,getRecord,detail}){
  const dialog=document.getElementById('document');document.getElementById('doc-content').innerHTML=baseHTML;
  let imported={};try{imported=JSON.parse(r.fieldVerificationDetails||'{}')}catch{}
- const sourceMap={'field-own-kk':'Memiliki KK Sendiri','field-house-area':'Luas Rumah (m²)','field-occupants':'Jumlah Penghuni (Jiwa)','field-occupancy-years':'Lama Menghuni Rumah (Tahun)','field-income':'Penghasilan Kepala Keluarga per Bulan (Rp)','field-ump':'Nilai UMP/UMK (Rp)','field-other-home':'Memiliki Aset Rumah Lainnya','field-prior-help':'Pernah Memperoleh BSPS','field-help-year':'Tahun Dapat BSPS','field-program-agree':'Bersedia Mengikuti Ketentuan BSPS'};
- const importedCriteria=Object.fromEntries(Object.entries(sourceMap).map(([key,column])=>[key,imported[column]]).filter(([,value])=>value!==undefined&&value!==''));
- const form=document.getElementById('verification-form'),saved={...importedCriteria,...(r.assessment?.criteria||{})};
+ const mapped=importVerification(imported);
+ const stored={...(r.assessment?.criteria||{})};let previous={};try{previous=JSON.parse(stored['import-baseline']||'{}')}catch{}delete stored['import-baseline'];
+ const synced=syncVerification(mapped.criteria,stored,previous);
+ const form=document.getElementById('verification-form'),saved=synced.criteria;
+ for(const key of Object.keys(previous)){if(!(key in saved))for(const el of Array.from(form.elements).filter(el=>el.name===key)){if(el.type==='radio'||el.type==='checkbox')el.checked=false;else el.value='';}}
+ const baseline=document.createElement('input');baseline.type='hidden';baseline.name='import-baseline';baseline.value=JSON.stringify(mapped.criteria);form.appendChild(baseline);
+ const saveState=document.createElement('input');saveState.type='hidden';saveState.name='field-save-state';saveState.value=saved['field-save-state']||(r.assessment?'Lengkap':'Draf');form.appendChild(saveState);
+ for(const [key,value] of Object.entries(saved)){for(const el of Array.from(form.elements).filter(el=>el.name===key)){if(el.type==='radio'||el.type==='checkbox')el.checked=el.value===value;else el.value=value;}}
+ if(mapped.unmapped.length||synced.conflicts.length){const notice=document.createElement('div');notice.className='notice';notice.textContent='Periksa isian sumber: '+mapped.unmapped.map(v=>v.column+': '+v.value).join('; ')+(synced.conflicts.length?' Koreksi lokal dipertahankan pada '+synced.conflicts.length+' isian yang berbeda dari impor terbaru.':'');form.prepend(notice);}
  const input=(key,label,type='text')=>`<label>${esc(label)}<input name="${key}" type="${type}" value="${esc(saved[key]??'')}" ${type==='number'?'min="0" step="any"':''}></label>`;
  const select=(key,label,choices)=>`<label>${esc(label)}<select name="${key}"><option value="">Pilih…</option>${choices.map(v=>`<option ${saved[key]===v?'selected':''}>${esc(v)}</option>`).join('')}</select></label>`;
  const groupRadio=(key,label,choices)=>`<fieldset><legend>${esc(label)}</legend>${choices.map(value=>`<label class="radio-choice"><input type="radio" name="${key}" value="${esc(value)}" ${saved[key]===value?'checked':''}>${esc(value)}</label>`).join('')}</fieldset>`;
@@ -21,10 +30,26 @@ export function mountFactualForm(r,baseHTML,{loadData,getRecord,detail}){
  form.querySelector('.verification-date').insertAdjacentHTML('afterbegin',input('field-verification-place','Tempat verifikasi'));
  form.querySelector('[name="field-verification-date"]').closest('label').querySelector('span').textContent='Tanggal verifikasi';
  form.querySelectorAll('input[type="number"]').forEach(el=>{el.min='0';el.step='any'});
- const read=()=>Object.fromEntries(new FormData(form).entries());
- const update=()=>{const v=read(),result=assessVerification(v,r.year);document.getElementById('factual-result').innerHTML=`<div>Status hunian<strong>${esc(result.housingStatus)}</strong></div><div>Rekomendasi<strong>${esc(result.recommendation)}</strong></div>`;document.getElementById('factual-conclusion').innerHTML=`<p><b>${esc(result.recommendation)}</b></p>${result.triggers.length?`<p>Dasar RTLH: ${esc(result.triggers.join('; '))}.</p>`:''}${result.reasons.length?`<p>Alasan:</p><ul>${result.reasons.map(reason=>`<li>${esc(reason)}</li>`).join('')}</ul>`:''}${result.missing.length?`<p>Belum lengkap: ${esc(result.missing.join(', '))}.</p>`:''}${result.priority?`<p>${esc(result.priority)}</p>`:''}`;const area=Number(v['field-house-area']),people=Number(v['field-occupants']);document.getElementById('area-ratio').textContent=people>0&&v['field-house-area']!==''?`Luas per penghuni: ${(area/people).toLocaleString('id-ID',{maximumFractionDigits:2})} m²/jiwa.`:'Isi luas rumah dan jumlah penghuni untuk melihat luas per jiwa.';return result;};
- form.addEventListener('input',update);form.addEventListener('change',update);update();
+ const read=()=>readFactualFields(form);
+ const update=()=>{updateConditionalFields(form);const v=read(),result=assessVerification(v,r.year);document.getElementById('factual-result').innerHTML=`<div>Status hunian<strong>${esc(result.housingStatus)}</strong></div><div>Rekomendasi<strong>${esc(result.recommendation)}</strong></div>`;document.getElementById('factual-conclusion').innerHTML=`<p><b>${esc(result.recommendation)}</b></p>${result.triggers.length?`<p>Dasar RTLH: ${esc(result.triggers.join('; '))}.</p>`:''}${result.reasons.length?`<p>Alasan:</p><ul>${result.reasons.map(reason=>`<li>${esc(reason)}</li>`).join('')}</ul>`:''}${result.missing.length?`<p>Belum lengkap: ${esc(result.missing.join(', '))}.</p>`:''}${result.priority?`<p>${esc(result.priority)}</p>`:''}`;const area=Number(v['field-house-area']),people=Number(v['field-occupants']);document.getElementById('area-ratio').textContent=people>0&&v['field-house-area']!==''?`Luas per penghuni: ${(area/people).toLocaleString('id-ID',{maximumFractionDigits:2})} m²/jiwa.`:'Isi luas rumah dan jumlah penghuni untuk melihat luas per jiwa.';return result;};
+ const changed=()=>{saveState.value='Draf';update()};form.addEventListener('input',changed);form.addEventListener('change',changed);update();
+ const printButton=document.createElement('button');printButton.type='button';printButton.textContent='Pratinjau / Cetak PDF';printButton.onclick=()=>{try{openVerificationPrint(read(),r.year,document.getElementById('assessment-notes').value)}catch(error){document.getElementById('assessment-message').textContent=error.message}};form.querySelector('.form-actions').prepend(printButton);
  document.getElementById('close-verification').onclick=()=>dialog.close();
- form.onsubmit=async e=>{e.preventDefault();const result=update(),message=document.getElementById('assessment-message');if(!result.complete){message.textContent='Belum dapat disimpan: '+result.missing.join(', ');return}const criteria=read();if(result.recommendation==='Direkomendasikan'&&!criteria['field-construction']){message.textContent='Pilih jenis penanganan yang direkomendasikan.';return}const button=form.querySelector('button[type="submit"]');button.disabled=true;message.textContent='Menyimpan…';try{const response=await fetch('/api/verifications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:r.id,year:r.year,criteria,notes:document.getElementById('assessment-notes').value})});const payload=await response.json();if(!response.ok)throw Error(payload.error||'Gagal menyimpan');await loadData();const record=getRecord(r.id,r.year);dialog.close();detail(r.id,r.year);message.textContent='Tersimpan';}catch(error){message.textContent=error.message;button.disabled=false}};
+ const save=async draft=>{
+  const result=update(),message=document.getElementById('assessment-message'),criteria=read();
+  if(!draft&&!result.complete){message.textContent='Belum lengkap: '+result.missing.join(', ')+'. Gunakan Simpan draf untuk menyimpan isian sementara.';return}
+  if(!draft&&result.recommendation==='Direkomendasikan'&&!criteria['field-construction']){message.textContent='Pilih jenis penanganan yang direkomendasikan.';return}
+  const buttons=[...form.querySelectorAll('.form-actions button')];buttons.forEach(b=>b.disabled=true);message.textContent='Menyimpan…';
+  try{
+   const response=await fetch('/api/verifications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:r.id,year:r.year,criteria,draft,notes:document.getElementById('assessment-notes').value})});
+   const payload=await response.json();if(!response.ok)throw Error(payload.error||'Gagal menyimpan');
+   await loadData();
+   if(draft){saveState.value='Draf';message.textContent='Draf tersimpan. Lanjutkan melengkapi isian.';buttons.forEach(b=>b.disabled=false)}else{dialog.close();detail(r.id,r.year)}
+  }catch(error){message.textContent=error.message;buttons.forEach(b=>b.disabled=false)}
+ };
+ const draftButton=document.createElement('button');draftButton.type='button';draftButton.textContent='Simpan draf';draftButton.onclick=()=>save(true);form.querySelector('.form-actions').appendChild(draftButton);
+ form.onsubmit=e=>{e.preventDefault();save(false)};
  dialog.showModal();
 }
+
+

@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {verificationPrintHTML} from '../public/verification-print.js';
+const html=verificationPrintHTML({'field-bnba':'12345678','field-name':'<script>bad()</script>','field-prior-help':'Tidak','field-help-year':'2024','money-0-available':'Tidak ada','money-0-value':'UNUSED_VALUE'},'2026');
+assert.equal((html.match(/<section class="page">/g)||[]).length,2);
+assert.ok(html.includes('DRAF — Belum lengkap'));
+assert.ok(html.includes('&lt;script&gt;bad()&lt;/script&gt;'));
+assert.ok(!html.includes('<script>bad()'));
+assert.ok(!html.includes('UNUSED_VALUE'));
+assert.ok(!html.includes('>2024<'));
+assert.ok(html.includes('Tenaga Pendamping Masyarakat'));
+console.log('Print data: draft, escaping, conditional values and two sections passed');

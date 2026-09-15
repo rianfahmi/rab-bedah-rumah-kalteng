@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {conditionalFields,readFactualFields,updateConditionalFields} from '../public/verification-conditions.js';
+assert.equal(conditionalFields({'field-prior-help':'Tidak'})['field-help-year'],false);
+assert.equal(conditionalFields({'field-prior-help':'Ya'})['field-help-year'],true);
+const form={elements:[{name:'money-0-available',value:'Tidak ada',type:'select-one'},{name:'money-0-value',value:'125000',type:'number'}]};
+updateConditionalFields(form);
+assert.equal(form.elements[1].disabled,true);
+assert.equal(readFactualFields(form)['money-0-value'],'125000');
+form.elements[0].value='Ada';updateConditionalFields(form);
+assert.equal(form.elements[1].disabled,false);
+assert.equal(form.elements[1].value,'125000');
+console.log('Conditional fields: availability, aid history, and retained edits passed');
