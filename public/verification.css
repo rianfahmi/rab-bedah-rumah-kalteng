@@ -125,3 +125,6 @@ dialog:has(.official-verification-sheet){scrollbar-width:thin;scrollbar-color:#7
 .official-verification-sheet .form-actions .reset-verification{width:40px;min-width:40px;height:40px;padding:0;border:1px solid #cbd9df;border-radius:8px;background:#fff;color:#486978}.official-verification-sheet .form-actions .reset-verification:hover{background:#edf6f5;color:#087d71}.official-verification-sheet .form-actions .reset-verification svg{width:18px;height:18px}
 
 .import-conflict-notice{border-left:3px solid #e98718!important;background:#fff8eb!important;color:#6f450e!important}
+
+.rab-dialog #rab-form[data-editing="false"] input,.rab-dialog #rab-form[data-editing="false"] select,.rab-dialog #rab-form[data-editing="false"] textarea{background:#f7fafb;color:#456170;border-color:#d7e2e6}
+.rab-dialog #rab-form[data-editing="false"] input:disabled,.rab-dialog #rab-form[data-editing="false"] select:disabled,.rab-dialog #rab-form[data-editing="false"] textarea:disabled{opacity:1;cursor:default}

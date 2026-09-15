@@ -37,7 +37,11 @@ export async function openRab(record){
  root.innerHTML=`<div class="modal-head"><h2>Rencana Anggaran Biaya Bedah Rumah</h2><button id="rab-close">Tutup</button></div><form id="rab-form"><div class="modal-body"><div class="notice">${esc(record.name)} · BNBA ${esc(record.id)} · Tahun ${record.year}<br>${esc(record.address)} · ${esc(record.village)} · ${esc(record.region)}</div><div class="admin-grid"><label>Jenis kegiatan<select name="activity">${['Peningkatan kualitas','Renovasi','Perbaikan'].map(value=>`<option ${value===doc.activity?'selected':''}>${value}</option>`).join('')}</select></label>${input('group','Kelompok CPB')}${input('place','Tempat')}${input('date','Tanggal','date')}${input('chair','Ketua kelompok')}${input('facilitator','Tenaga Pendamping Masyarakat')}${input('coordinator','Koordinator Kabupaten/Kota')}</div><h3>A. Rincian biaya</h3><p>Format ini mengikuti Lampiran 26/KPTS/Dt/2026. Isi hanya pekerjaan, volume, harga satuan, dan sumber dana yang diperlukan untuk rumah tersebut. Harga satuan mencakup pajak dan pengiriman berdasarkan survei harga.</p><div class="table-scroll"><table id="rab-costs"><thead><tr><th>No.</th>${columns.map(([,label])=>`<th>${label}</th>`).join('')}<th>Total harga</th><th></th></tr></thead><tbody></tbody></table></div><button type="button" id="rab-add">Tambah pekerjaan</button><div id="rab-summary" aria-live="polite"></div><label>Catatan<textarea name="notes" maxlength="3000">${esc(doc.notes)}</textarea></label><div id="rab-message" role="status"></div></div><div class="modal-foot"><button type="button" id="rab-export">Export rincian Excel</button><button type="submit" class="primary">Simpan draf RAB</button></div></form>`;
 
  const form=root.querySelector('form'),body=root.querySelector('tbody');
- let dirty=false;
+ const exportButton=root.querySelector('#rab-export'),editButton=form.querySelector('[type="submit"]'),addButton=root.querySelector('#rab-add');
+ exportButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H5v20h14V7l-5-5ZM14 2v6h5M8 13l4 4m0-4-4 4"/></svg><span>Export</span>';
+ exportButton.title='Export rincian Excel';
+ editButton.id='rab-edit';editButton.type='button';editButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z"/></svg><span>Edit</span>';
+ let dirty=false,editing=false;
  function readRows(){
   return [...body.rows].map((tr,index)=>{
    const previous=doc.rows[index]||{};
@@ -54,6 +58,14 @@ export async function openRab(record){
   });
   root.querySelector('#rab-summary').innerHTML=`<p><b>Total RAB: Rp${money(assessment.totals.cost)}</b> · Tahap I Rp${money(assessment.totals.stage1)} · Tahap II Rp${money(assessment.totals.stage2)} · Swadaya uang Rp${money(assessment.totals.cash)} · Bahan lama Rp${money(assessment.totals.reused)}</p>${assessment.errors.length?`<details><summary>${assessment.errors.length} isian perlu dilengkapi</summary><ul>${assessment.errors.map(value=>`<li>${esc(value)}</li>`).join('')}</ul></details>`:'<p>Rincian biaya dan sumber dana seimbang.</p>'}`;
  }
+ function setEditMode(enabled){
+  editing=enabled;form.dataset.editing=enabled?'true':'false';
+  form.querySelectorAll('input,select,textarea').forEach(element=>element.disabled=!enabled);
+  addButton.disabled=!enabled;
+  body.querySelectorAll('[data-remove]').forEach(button=>button.disabled=!enabled);
+  editButton.innerHTML=enabled?'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l3 3v15H5V3Zm3 0v6h8V3m-8 18v-7h8v7"/></svg><span>Simpan</span>':'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z"/></svg><span>Edit</span>';
+  editButton.setAttribute('aria-label',enabled?'Simpan RAB':'Edit RAB');
+ }
  function renderRows(){
   body.innerHTML=doc.rows.map((row,index)=>{
    if(row.section===true)return `<tr class="rab-section" data-section="true"><td>${esc(row.no)}</td><td colspan="${columns.length+2}"><b>${esc(row.description)}</b></td></tr>`;
@@ -61,33 +73,34 @@ export async function openRab(record){
    return `<tr><td>${esc(number)}</td>${columns.map(([key,label])=>`<td><input aria-label="${label} baris ${index+1}" data-key="${key}" value="${esc(row[key])}" type="${['description','unit'].includes(key)?'text':'number'}" ${['description','unit'].includes(key)?'':'min="0" step="any"'} style="min-width:${key==='description'?200:90}px;width:100%"></td>`).join('')}<td data-total></td><td><button type="button" data-remove="${index}" aria-label="Hapus baris ${index+1}">×</button></td></tr>`;
   }).join('');
   body.querySelectorAll('[data-remove]').forEach(button=>button.onclick=()=>{
-   doc.rows=readRows();doc.rows.splice(Number(button.dataset.remove),1);dirty=true;renderRows();
+   if(!editing)return;doc.rows=readRows();doc.rows.splice(Number(button.dataset.remove),1);dirty=true;renderRows();
   });
-  update();
+  update();setEditMode(editing);
  }
 
  root.querySelector('#rab-export').onclick=()=>{
-  const current={...Object.fromEntries(new FormData(form)),rows:readRows()};
+  const current={...doc,...Object.fromEntries(new FormData(form)),rows:readRows()};
   const exported=rabExport(record,current);
   downloadWorkbook(exported.headers,exported.rows,`RAB_${record.year}_${record.id}.xlsx`,'Rincian RAB');
  };
  renderRows();
- form.oninput=()=>{dirty=true;update();};
- root.querySelector('#rab-add').onclick=()=>{doc.rows=readRows();doc.rows.push(blank());dirty=true;renderRows();};
+ form.oninput=()=>{if(editing){dirty=true;update();}};
+ addButton.onclick=()=>{if(!editing)return;doc.rows=readRows();doc.rows.push(blank());dirty=true;renderRows();};
+ editButton.onclick=()=>{if(editing)form.requestSubmit();else setEditMode(true);};
  root.querySelector('#rab-close').onclick=()=>{if(!dirty||confirm('Tutup tanpa menyimpan perubahan RAB?'))dialog.close();};
  dialog.oncancel=event=>{if(dirty&&!confirm('Tutup tanpa menyimpan perubahan RAB?'))event.preventDefault();};
  form.onsubmit=async event=>{
   event.preventDefault();
   const fields=Object.fromEntries(new FormData(form));
   doc={...fields,rows:readRows()};
-  const button=form.querySelector('[type=submit]'),message=root.querySelector('#rab-message');
+  const button=editButton,message=root.querySelector('#rab-message');
   button.disabled=true;message.textContent='Menyimpan…';
   try{
    const result=await fetch('/api/rab',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:record.id,year:record.year,document:doc})});
    const saved=await result.json();
    if(!result.ok)throw Error(saved.error);
    dirty=false;
-   message.textContent='Draf RAB tersimpan. '+(saved.assessment.complete?'Rincian biaya seimbang.':'Lengkapi catatan pemeriksaan sebelum finalisasi.');
+   message.textContent='RAB tersimpan. '+(saved.assessment.complete?'Rincian biaya seimbang.':'Lengkapi catatan pemeriksaan sebelum finalisasi.');setEditMode(false);
   }catch(error){message.textContent=error.message;}finally{button.disabled=false;}
  };
 }
