@@ -50,7 +50,8 @@ async function createVerificationPdf(values,year,notes){
  footer();doc.setProperties({title:'Lembar Verifikasi '+printableValue(values,'field-bnba'),subject:'Verifikasi Faktual CPB'});return doc.output('blob');
 }
 export async function openVerificationPrint(values,year,notes,{newTab=false}={}) {
- const tab=newTab?window.open('','_blank','noopener'):null;
+ const tab=newTab?window.open('','_blank'):null;
+ if(tab){try{tab.opener=null}catch{}}
  if(tab)tab.document.write('<title>Menyiapkan PDF...</title><p style="font-family:system-ui;padding:24px">Menyiapkan PDF...</p>');
  try{const blob=await createVerificationPdf(values,year,notes);const url=URL.createObjectURL(blob);if(tab)tab.location.href=url;else window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),120000);}catch(error){if(tab)tab.close();console.error('Gagal membuat PDF',error);window.alert('PDF belum dapat dibuat. Silakan coba lagi.');}
 }
