@@ -24,7 +24,7 @@ const cpbContext=record=>{
   ['Jumlah penghuni',value('Jumlah Penghuni (Jiwa)')],
   ['Penghasilan per bulan',value('Penghasilan Kepala Keluarga per Bulan (Rp)')],
   ['Nilai UMP/UMK',value('Nilai UMP/UMK (Rp)')],
-  ['Kondisi fondasi',value('Fondasi')],
+  ['Kondisi fondasi',value('Fondasi','Pondasi')],
   ['Kondisi dinding',value('Dinding')],
   ['Kondisi lantai',value('Lantai')],
   ['Kondisi penutup atap',value('Penutup Atap')],
