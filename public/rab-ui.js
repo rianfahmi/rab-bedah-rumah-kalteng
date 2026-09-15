@@ -10,6 +10,29 @@ const columns=[
  ['stage1','Tahap I'],['stage2','Tahap II'],['cash','Swadaya uang'],['reused','Bahan lama']
 ];
 const blank=()=>Object.fromEntries(columns.map(([key])=>[key,'']));
+const verificationDetails=record=>{try{return JSON.parse(record.fieldVerificationDetails||'{}')}catch{return {}}};
+const cpbContext=record=>{
+ const source=verificationDetails(record);
+ const value=(...keys)=>keys.map(key=>source[key]).find(item=>item!==undefined&&item!==null&&String(item).trim()!=='')||'—';
+ const facts=[
+  ['Hasil verifikasi',value('Hasil Verifikasi')||record.fieldRecommendation],
+  ['Status verifikasi',value('Status Verifikasi')||record.verificationStatus],
+  ['Rekomendasi BA-HV',record.bahvVerification||'—'],
+  ['Konstruksi',value('Metode Konstruksi')],
+  ['Penguasaan lahan',value('Status Penguasaan Lahan')],
+  ['Luas rumah',value('Luas Rumah (m²)')],
+  ['Jumlah penghuni',value('Jumlah Penghuni (Jiwa)')],
+  ['Penghasilan per bulan',value('Penghasilan Kepala Keluarga per Bulan (Rp)')],
+  ['Nilai UMP/UMK',value('Nilai UMP/UMK (Rp)')],
+  ['Kondisi fondasi',value('Fondasi')],
+  ['Kondisi dinding',value('Dinding')],
+  ['Kondisi lantai',value('Lantai')],
+  ['Kondisi penutup atap',value('Penutup Atap')],
+  ['Akses air minum',value('Akses Air Minum')],
+  ['Akses sanitasi',value('Akses Sanitasi')]
+ ];
+ return '<section class="cpb-rab-context" aria-label="Rincian CPB"><header><div><div class="cpb-kicker">Rincian Calon Penerima Bantuan</div><h1>'+esc(record.name)+'</h1><p>NIK '+esc(record.nik||'—')+' · No. KK '+esc(record.kk||'—')+' · BNBA '+esc(record.id)+'</p></div><div class="cpb-stage">Tahun '+esc(record.year)+'<small>'+esc(record.phase||'—')+'</small></div></header><div class="cpb-profile"><div><span>Lokasi</span><strong>'+esc(record.address||'—')+'</strong><small>'+esc(record.village||'—')+' · '+esc(record.district||'—')+' · '+esc(record.region||'—')+'</small></div><div><span>Pendamping verifikasi faktual RAB</span><strong>'+esc((record.facilitators||[]).join(', ')||record.fac||'—')+'</strong></div><div><span>Alur saat ini</span><strong>Verifikasi → BA-HV → Penyusunan RAB</strong><small>'+esc(record.bahvVerification||'Menunggu Berita Acara Hasil Verifikasi')+'</small></div></div><section class="cpb-verification"><div class="cpb-section-title"><h2>Hasil Verifikasi Faktual</h2><p>Data sumber verifikasi yang menjadi dasar penyusunan RAB.</p></div><div class="cpb-verification-grid">'+facts.map(([label,item])=>'<div><span>'+esc(label)+'</span><strong>'+esc(item)+'</strong></div>').join('')+'</div></section></section>';
+};
 
 export async function openRab(record){
  const dialog=document.getElementById('document'),root=document.getElementById('doc-content');
@@ -36,6 +59,7 @@ export async function openRab(record){
  const input=(key,label,type='text')=>`<label>${label}<input name="${key}" type="${type}" value="${esc(doc[key])}"></label>`;
  root.innerHTML=`<div class="modal-head"><h2>Rencana Anggaran Biaya Bedah Rumah</h2><button id="rab-close">Tutup</button></div><form id="rab-form"><div class="modal-body"><div class="notice">${esc(record.name)} · BNBA ${esc(record.id)} · Tahun ${record.year}<br>${esc(record.address)} · ${esc(record.village)} · ${esc(record.region)}</div><div class="admin-grid"><label>Jenis kegiatan<select name="activity">${['Peningkatan kualitas','Renovasi','Perbaikan'].map(value=>`<option ${value===doc.activity?'selected':''}>${value}</option>`).join('')}</select></label>${input('group','Kelompok CPB')}${input('place','Tempat')}${input('date','Tanggal','date')}${input('chair','Ketua kelompok')}${input('facilitator','Tenaga Pendamping Masyarakat')}${input('coordinator','Koordinator Kabupaten/Kota')}</div><h3>A. Rincian biaya</h3><p>Format ini mengikuti Lampiran 26/KPTS/Dt/2026. Isi hanya pekerjaan, volume, harga satuan, dan sumber dana yang diperlukan untuk rumah tersebut. Harga satuan mencakup pajak dan pengiriman berdasarkan survei harga.</p><div class="table-scroll"><table id="rab-costs"><thead><tr><th>No.</th>${columns.map(([,label])=>`<th>${label}</th>`).join('')}<th>Total harga</th><th></th></tr></thead><tbody></tbody></table></div><button type="button" id="rab-add">Tambah pekerjaan</button><div id="rab-summary" aria-live="polite"></div><label>Catatan<textarea name="notes" maxlength="3000">${esc(doc.notes)}</textarea></label><div id="rab-message" role="status"></div></div><div class="modal-foot"><button type="button" id="rab-export">Export rincian Excel</button><button type="submit" class="primary">Simpan draf RAB</button></div></form>`;
 
+ root.querySelector('#rab-form').insertAdjacentHTML('beforebegin',cpbContext(record));
  const form=root.querySelector('form'),body=root.querySelector('tbody');
  const exportButton=root.querySelector('#rab-export'),editButton=form.querySelector('[type="submit"]'),addButton=root.querySelector('#rab-add');
  exportButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H5v20h14V7l-5-5ZM14 2v6h5M8 13l4 4m0-4-4 4"/></svg><span>Export</span>';
