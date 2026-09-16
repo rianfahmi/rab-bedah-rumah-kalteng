@@ -4,7 +4,7 @@ import {currentVerification} from './verification-import.js';
 import {componentGroups} from './verification-rules.js';
 const paths={home:'M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9',grid:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',file:'M14 2H5v20h14V7l-5-5ZM14 2v6h5M8 12h8M8 16h8',chevron:'m9 5 7 7-7 7',down:'m6 9 6 6 6-6',calendar:'M4 5h16v16H4zM8 2v6M16 2v6M4 11h16',check:'m3 12 5 5L20 5m-8 12 9-9',alert:'m12 3 10 18H2L12 3Zm0 6v5m0 3h.01',clock:'M12 8v5l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',arrow:'M6 18 18 6M6 6h12v12',reset:'M3 10a9 9 0 1 1 1 8M3 3v7h7',search:'M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',eye:'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0',back:'m12 5-7 7 7 7M5 12h15',close:'m6 6 12 12M6 18 18 6',edit:'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z',users:'M16 21v-3a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v3M13 6a4 4 0 1 1-8 0 4 4 0 0 1 8 0M17 3a4 4 0 0 1 0 8M22 21v-3a4 4 0 0 0-3-4'};
 import {mountFactualForm,verificationValues} from './verification-ui.js';
-import {openVerificationPrint} from './verification-print.js?v=20260915-native-pdf';
+import {openVerificationPrint} from './verification-print.js?v=20260916-server-pdf';
 import {importPage,importBusy} from './import-ui.js';
 import {mountIssues,issueTable} from './validation-ui.js';
 Object.assign(paths,{chart:'M4 19V9m6 10V5m6 14v-7',clipboard:'M9 4h6l1 2h3v14H5V6h3l1-2Zm0 7h6m-6 4h6',upload:'M12 16V4m0 0 4 4m-4-4L8 8M5 20h14'});

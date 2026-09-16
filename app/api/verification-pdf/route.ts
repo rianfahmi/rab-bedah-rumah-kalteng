@@ -1,0 +1,39 @@
+import {jsPDF} from 'jspdf';
+
+export const runtime='nodejs';
+const clean=(value:unknown)=>String(value??'').replace(/[\u0000-\u001f]/g,' ').replace(/[✓√]/g,'X').replace(/²/g,'2').replace(/[—–]/g,'-');
+const printable=(values:Record<string,unknown>,key:string,fallback='-')=>clean(values[key]===undefined||values[key]===''?fallback:values[key]);
+const numeric=(value:unknown)=>{const number=Number(value);return Number.isFinite(number)?number.toLocaleString('id-ID',{maximumFractionDigits:2}):clean(value)};
+
+export async function POST(request:Request){
+ let payload:{values?:Record<string,unknown>;year?:string;notes?:string};
+ try{payload=await request.json()}catch{return Response.json({error:'Permintaan PDF tidak valid.'},{status:400})}
+ const values=payload.values;
+ if(!values||typeof values!=='object')return Response.json({error:'Data verifikasi tidak tersedia.'},{status:400});
+ const year=clean(payload.year||'');const notes=clean(payload.notes||'');
+ const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+ const margin=15,width=180,footerY=287;let y=18,page=1;
+ const header=()=>{doc.setDrawColor(20,61,77);doc.setLineWidth(.4);doc.line(margin,13,195,13);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(20,61,77);doc.text('KEMENTERIAN PERUMAHAN DAN KAWASAN PERMUKIMAN',margin,9);doc.setTextColor(0);};
+ const footer=()=>{doc.setDrawColor(180,195,202);doc.line(margin,footerY-5,195,footerY-5);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,105,116);doc.text('Lembar Hasil Verifikasi Faktual CPB',margin,footerY);doc.text(`Halaman ${page}`,195,footerY,{align:'right'});doc.setTextColor(0);};
+ const newPage=()=>{footer();doc.addPage();page++;y=18;header()};
+ const ensure=(height:number)=>{if(y+height>276)newPage()};
+ const title=(text:string)=>{ensure(18);doc.setFillColor(237,244,246);doc.roundedRect(margin,y,width,9,1,1,'F');doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(20,61,77);doc.text(clean(text),margin+4,y+6);doc.setTextColor(0);y+=14};
+ const row=(label:string,value:unknown)=>{doc.setFont('helvetica','bold');doc.setFontSize(8);const labels=doc.splitTextToSize(clean(label),57),details=doc.splitTextToSize(clean(value),116),height=Math.max(labels.length,details.length)*4.3+3;ensure(height);doc.setDrawColor(211,223,228);doc.rect(margin,y,60,height);doc.rect(margin+60,y,120,height);doc.text(labels,margin+3,y+4.2);doc.setFont('helvetica','normal');doc.text(details,margin+63,y+4.2);y+=height};
+ const tableHeader=(labels:string[],widths:number[])=>{ensure(11);doc.setFillColor(237,244,246);doc.setDrawColor(201,216,222);let x=margin;doc.setFont('helvetica','bold');doc.setFontSize(7.5);labels.forEach((label,index)=>{doc.rect(x,y,widths[index],8,'FD');doc.text(doc.splitTextToSize(clean(label),widths[index]-3),x+1.5,y+3.3);x+=widths[index]});y+=8};
+ const tableRow=(cells:unknown[],widths:number[])=>{doc.setFont('helvetica','normal');doc.setFontSize(7.5);const lines=cells.map((cell,index)=>doc.splitTextToSize(clean(cell),widths[index]-3));const height=Math.max(...lines.map(line=>line.length))*3.7+3;ensure(height+1);let x=margin;lines.forEach((line,index)=>{doc.setDrawColor(211,223,228);doc.rect(x,y,widths[index],height);doc.text(line,x+1.5,y+3.2);x+=widths[index]});y+=height};
+ header();doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text('LEMBAR HASIL VERIFIKASI FAKTUAL',105,y,{align:'center'});y+=6;doc.setFontSize(10);doc.text('CALON PENERIMA BANTUAN BEDAH RUMAH',105,y,{align:'center'});y+=10;
+ doc.setFillColor(245,249,250);doc.roundedRect(margin,y,width,12,1,1,'F');doc.setFontSize(8);doc.text(`TAHUN ${year}  |  No. Urut BNBA: ${printable(values,'field-bnba')}`,margin+4,y+5);doc.text(`Status dokumen: ${values['field-save-state']==='Draf'?'Draf':'Lembar verifikasi'}`,margin+4,y+9);y+=18;
+ title('DATA CALON PENERIMA BANTUAN');
+ const identity:[string,string][]=[['Nama KK','field-name'],['NIK','field-nik'],['Nomor KK','field-kk'],['Jenis kelamin','field-gender'],['Umur','field-age'],['Alamat KK','field-address'],['RT/RW','field-rtrw'],['Desa/Kelurahan','field-village'],['Kecamatan','field-district'],['Kabupaten/Kota','field-region'],['Provinsi','field-province'],['Titik koordinat','field-coordinate'],['Penghasilan KK per bulan (Rp)','field-income'],['Nilai UMP/UMK','field-ump'],['Pernah menerima bantuan','field-prior-help'],['Jenis bantuan sebelumnya','field-help-type'],['Tahun mendapat bantuan','field-help-year'],['Lama menghuni rumah','field-occupancy-years'],['Memiliki aset rumah lainnya','field-other-home'],['Jumlah penghuni (jiwa)','field-occupants'],['Luas rumah (m2)','field-house-area'],['Bersedia mengikuti ketentuan','field-program-agree']];
+ identity.forEach(([label,key])=>row(label,/income|ump|age|year|occupants|area/.test(key)?numeric(values[key]??'-'):printable(values,key)));
+ title('KONDISI RUMAH');tableHeader(['Komponen','Pilihan terpilih','Kode'],[48,94,38]);
+ const conditions=[['Pondasi','condition-foundation'],['Sloof','condition-sloof'],['Kolom','condition-column'],['Ring Balok','condition-ring'],['Rangka Atap','condition-roof-frame'],['Dinding','condition-wall'],['Lantai','condition-floor'],['Penutup Atap','condition-roof-cover'],['Akses Air Minum','condition-drinking-water'],['Akses Sanitasi','condition-sanitation'],['Pencahayaan','condition-lighting'],['Penghawaan','condition-ventilation'],['Kecukupan Luas Ruang','condition-space'],['Status Lahan','condition-land']];
+ conditions.forEach(([label,key])=>tableRow([label,printable(values,key),printable(values,key)],[48,94,38]));
+ title('DATA ADMINISTRASI DAN KESWADAYAAN');[['Warga negara Indonesia','field-wni'],['Kategori keluarga','field-family'],['Memiliki KK sendiri','field-own-kk'],['Tanah dalam sengketa','field-dispute'],['Desil DTSEN','field-desil'],['Status penghuni','field-occupancy-status'],['Memilih program lain','field-other-program']].forEach(([label,key])=>row(label,printable(values,key)));
+ const resources:[string,string[],string][]=[['Material eksisting',['Kayu','Balok kayu','Kusen','Daun pintu','Jendela','Genteng','Batu bata','Lainnya'],'material-used'],['Material baru/stok',['Kayu','Genteng','Batu bata','Pasir','Kerikil','Lainnya'],'material-new'],['Uang',['Tabungan','Hasil jual panen/ternak','Bantuan keluarga/kerabat','Lainnya'],'money'],['Tenaga kerja',['Tenaga sendiri','Dukungan keluarga','Dukungan tetangga/kerabat','Lainnya'],'labor']];
+ resources.forEach(([heading,items,prefix])=>{title(heading);tableHeader(['No.','Bentuk/sumber','Status','Keterangan'],[14,56,34,76]);items.forEach((item,index)=>{const available=values[`${prefix}-${index}-available`]||'-';const detail=available==='Ada'?(values[`${prefix}-${index}-value`]||'-'):'-';tableRow([String(index+1),item,available,detail],[14,56,34,76])})});
+ title('KESIMPULAN VERIFIKASI');row('Status hunian',printable(values,'assessment-housing-status','Belum dinilai'));row('Rekomendasi',printable(values,'assessment-recommendation','Belum lengkap'));row('Jenis penanganan',printable(values,'field-construction'));if(notes)row('Keterangan hasil verifikasi',notes);row('Tempat, tanggal verifikasi',`${printable(values,'field-verification-place')}, ${printable(values,'field-verification-date')}`);[['Koordinator Kabupaten/Kota','field-coordinator'],['Calon Penerima Bantuan','field-recipient'],['Tenaga Pendamping Masyarakat','field-tpm']].forEach(([label,key])=>row(label,printable(values,key)));
+ footer();doc.setProperties({title:`Lembar Verifikasi ${printable(values,'field-bnba')}`,subject:'Verifikasi Faktual CPB'});
+ const bytes=new Uint8Array(doc.output('arraybuffer'));
+ return new Response(bytes,{headers:{'Content-Type':'application/pdf','Content-Disposition':`inline; filename="lembar-verifikasi-${printable(values,'field-bnba')}.pdf"`,'Cache-Control':'no-store'}});
+}
