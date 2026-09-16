@@ -21,7 +21,7 @@ export async function openVerificationPrint(values,year,notes,{newTab=false}={})
  const tab=newTab?window.open('','_blank'):null;
  if(tab){try{tab.opener=null}catch{};tab.document.write('<title>Menyiapkan PDF...</title><p style="font-family:system-ui;padding:24px">Menyiapkan PDF...</p>')}
  try{
-  const response=await fetch('/api/verification-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({values,year,notes})});
+  const result=assessVerification(values,year);const documentValues={...values,'assessment-housing-status':result.housingStatus,'assessment-recommendation':result.recommendation};const response=await fetch('/api/verification-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({values:documentValues,year,notes})});
   if(!response.ok)throw new Error('Server tidak dapat membuat PDF.');
   const blob=await response.blob();
   if(blob.type!=='application/pdf')throw new Error('Dokumen bukan PDF.');
