@@ -18,8 +18,12 @@ export async function POST(request:Request){
   const d=body.document;
   if(!d||!Array.isArray(d.rows)||d.rows.length>500)return json({error:'Maksimal 500 baris pekerjaan.'},400);
   if(!['Peningkatan kualitas','Renovasi','Perbaikan'].includes(d.activity))return json({error:'Pilih jenis kegiatan.'},400);
-  const fields=['place','date','group','chair','facilitator','coordinator','notes','technical-method','technical-foundation','technical-wall','technical-roof','technical-floor','technical-notes','drpb-stage1','drpb-stage2','drpb-material','drpb-cash','drpb-labor','drpb-notes'];
+  const fields=['place','date','group','chair','facilitator','coordinator','notes','technical-method','technical-notes','drpb-date','drpb-bank-account','drpb-store','drpb-store-address','drpb-store-account','drpb-notes'];
   if(fields.some(k=>typeof d[k]!=='string'||d[k].length>3000))return json({error:'Isian administrasi tidak valid.'},400);
+  const structured=['technicalRows','drpbMaterials','drpbLabor'];
+  if(structured.some(key=>!Array.isArray(d[key])||d[key].length>100)||!d.technicalPhotos||typeof d.technicalPhotos!=='object'||Array.isArray(d.technicalPhotos))return json({error:'Tabel RAB tidak valid.'},400);
+  const validCell=(value:unknown)=>typeof value==='string'&&value.length<=3000;
+  if(!d.technicalRows.every((row:unknown)=>row&&typeof row==='object'&&Object.values(row as Record<string,unknown>).every(validCell))||!d.drpbMaterials.every((row:unknown)=>row&&typeof row==='object'&&Object.values(row as Record<string,unknown>).every(validCell))||!d.drpbLabor.every((row:unknown)=>row&&typeof row==='object'&&Object.values(row as Record<string,unknown>).every(validCell))||!Object.values(d.technicalPhotos).every(validCell))return json({error:'Isian tabel RAB tidak valid.'},400);
   for(const row of d.rows){
    if(!row||typeof row.description!=='string'||row.description.length>500)return json({error:'Baris biaya tidak valid.'},400);
    if(row.section===true)continue;
@@ -32,7 +36,7 @@ export async function POST(request:Request){
    return record.id===body.id&&record.year===body.year;
   }));
   if(!exists)return json({error:'BNBA tidak ditemukan.'},400);
-  const document=Object.fromEntries(['activity','rows',...fields].map(k=>[k,d[k]]));
+  const document=Object.fromEntries(['activity','rows',...fields,...structured,'technicalPhotos'].map(k=>[k,d[k]]));
   const assessment=calculateRab(d.rows),updatedAt=new Date().toISOString();
   await db().prepare('INSERT INTO rab_documents(record_key,payload,updated_at) VALUES(?,?,?) ON CONFLICT(record_key) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').bind(`${body.year}:${body.id}`,JSON.stringify(document),updatedAt).run();
   return json({ok:true,updatedAt,assessment});

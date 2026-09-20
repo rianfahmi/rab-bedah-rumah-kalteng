@@ -1,4 +1,4 @@
-import {openRab} from './rab-ui.js?v=20260920-rab-tabs';
+import {openRab} from './rab-ui.js?v=20260920-rab-tables-v2';
 
 import {currentVerification} from './verification-import.js';
 import {componentGroups} from './verification-rules.js';
