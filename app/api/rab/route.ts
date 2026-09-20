@@ -18,7 +18,7 @@ export async function POST(request:Request){
   const d=body.document;
   if(!d||!Array.isArray(d.rows)||d.rows.length>500)return json({error:'Maksimal 500 baris pekerjaan.'},400);
   if(!['Peningkatan kualitas','Renovasi','Perbaikan'].includes(d.activity))return json({error:'Pilih jenis kegiatan.'},400);
-  const fields=['place','date','group','chair','facilitator','coordinator','notes'];
+  const fields=['place','date','group','chair','facilitator','coordinator','notes','technical-method','technical-foundation','technical-wall','technical-roof','technical-floor','technical-notes','drpb-stage1','drpb-stage2','drpb-material','drpb-cash','drpb-labor','drpb-notes'];
   if(fields.some(k=>typeof d[k]!=='string'||d[k].length>3000))return json({error:'Isian administrasi tidak valid.'},400);
   for(const row of d.rows){
    if(!row||typeof row.description!=='string'||row.description.length>500)return json({error:'Baris biaya tidak valid.'},400);
